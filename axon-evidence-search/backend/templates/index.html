@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Axon Evidence Search - AI-Powered Investigation Tool + Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      min-height: 100vh;
+      color: #333;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .header { text-align: center; margin-bottom: 3rem; color: white; }
+    .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; font-weight: 700; }
+    .header p { font-size: 1.2rem; opacity: 0.9; }
+    .main-content {
+      background: white; border-radius: 16px; padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    .upload-section {
+      border: 3px dashed #e1e5e9; border-radius: 12px; padding: 3rem; text-align: center;
+      margin-bottom: 2rem; transition: all 0.3s ease;
+    }
+    .upload-section:hover { border-color: #2a5298; background-color: #f8f9fa; }
+    .upload-button {
+      background: #2a5298; color: white; border: none; padding: 1rem 2rem; border-radius: 8px;
+      font-size: 1.1rem; cursor: pointer; transition: all 0.3s ease;
+    }
+    .upload-button:hover { background: #1e3c72; transform: translateY(-2px); }
+    .file-input { display: none; }
+    .preview-section { display: none; margin-top: 2rem; }
+    .preview-image {
+      max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .loading { display: none; text-align: center; padding: 2rem; }
+    .spinner {
+      width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #2a5298;
+      border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;
+    }
+    @keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
+    .results-section { display: none; margin-top: 2rem; }
+    .result-card {
+      background: #f8f9fa; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border-left: 4px solid #2a5298;
+    }
+    .result-card h3 { color: #1e3c72; margin-bottom: 1rem; }
+    .object-item, .text-item {
+      background: white; padding: 0.75rem; margin: 0.5rem 0; border-radius: 6px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .confidence-bar { width: 100%; height: 20px; background: #e1e5e9; border-radius: 10px; overflow: hidden; margin: 0.5rem 0; }
+    .confidence-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease; }
+    .confidence-high { background: linear-gradient(90deg, #28a745, #20c997); }
+    .confidence-medium { background: linear-gradient(90deg, #ffc107, #fd7e14); }
+    .confidence-low { background: linear-gradient(90deg, #dc3545, #e74c3c); }
+    .search-section { margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e1e5e9; }
+    .search-input { width: 70%; padding: 1rem; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 1rem; }
+    .search-button { background: #28a745; color: white; border: none; padding: 1rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-left: 1rem; }
+    .search-button:hover { background: #218838; }
+    .demo-info { background: #fff3cd; border: 1px solid #ffeaa7; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; }
+    .demo-info strong { color: #856404; }
+
+    /* DASHBOARD */
+    .dashboard-section { margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e1e5e9; }
+    .metrics-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;
+    }
+    .metric-card {
+      background: white; border: 2px solid #e1e5e9; border-radius: 12px; padding: 1.5rem; text-align: center;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .metric-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-color: #2a5298; }
+    .metric-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .metric-number { font-size: 2rem; font-weight: bold; color: #1e3c72; margin-bottom: 0.25rem; }
+    .metric-label { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .metric-trend { font-size: 0.8rem; color: #28a745; font-weight: 500; }
+
+    .dashboard-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+    .dashboard-card { background: white; border: 2px solid #e1e5e9; border-radius: 12px; padding: 1.5rem; }
+    .dashboard-card h4 { margin-bottom: 1rem; color: #1e3c72; font-size: 1.1rem; }
+    .simple-chart {}
+    .chart-item { display: flex; align-items: center; margin-bottom: 0.75rem; }
+    .chart-label { width: 120px; font-size: 0.9rem; color: #666; }
+    .chart-bar { flex: 1; height: 20px; background: #f1f3f4; border-radius: 10px; overflow: hidden; margin: 0 1rem; }
+    .chart-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease; }
+    .object-stats {}
+    .object-stat { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f1f3f4; }
+    .object-stat:last-child { border-bottom: none; }
+    .object-name { font-size: 0.9rem; color: #333; }
+    .object-count { font-size: 0.85rem; color: #666; font-weight: 500; }
+
+    .officer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+    .officer-stat { display: flex; align-items: center; padding: 1rem; background: #f8f9fa; border-radius: 8px; }
+    .officer-avatar { font-size: 2.5rem; margin-right: 1rem; }
+    .officer-name { font-weight: bold; color: #1e3c72; margin-bottom: 0.25rem; }
+    .officer-metrics { font-size: 0.85rem; color: #666; line-height: 1.4; }
+
+    @media (max-width: 768px) {
+      .dashboard-row { grid-template-columns: 1fr; }
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 Axon Evidence Search</h1>
+      <p>AI-Powered Investigation Tool for Digital Evidence Analysis</p>
+    </div>
+
+    <div class="main-content">
+      <div class="demo-info">
+        <strong>Demo Mode:</strong> Upload an image or short video. We extract a frame and analyze it for objects, text, and people. Results will also feed the dashboard counters.
+      </div>
+
+      <!-- Upload -->
+      <div class="upload-section" id="uploadSection">
+        <h3>📸 Upload Evidence Image/Video</h3>
+        <p style="margin: 1rem 0; color: #666;">Body cams, dash cams, or security footage (Max ~16MB)</p>
+        <input type="file" id="imageInput" class="file-input" accept="image/*,video/*">
+        <button class="upload-button" onclick="document.getElementById('imageInput').click()">Choose File</button>
+      </div>
+
+      <!-- Preview -->
+      <div class="preview-section" id="previewSection">
+        <h3>📋 Preview</h3>
+        <img id="previewImage" class="preview-image" alt="Preview">
+        <br><br>
+        <button class="upload-button" onclick="analyzeImage()">🤖 Analyze with AI</button>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading" id="loadingSection">
+        <div class="spinner"></div>
+        <p>AI is analyzing your evidence... This may take a few seconds.</p>
+      </div>
+
+      <!-- Results -->
+      <div class="results-section" id="resultsSection">
+        <h2>🎯 Analysis Results</h2>
+        <div id="summaryCard" class="result-card">
+          <h3>Summary</h3>
+          <p id="summaryText"></p>
+        </div>
+
+        <div id="objectsCard" class="result-card">
+          <h3>🚗 Objects Detected</h3>
+          <div id="objectsList"></div>
+        </div>
+
+        <div id="textCard" class="result-card">
+          <h3>📝 Text Found (License Plates, Signs, etc.)</h3>
+          <div id="textList"></div>
+        </div>
+
+        <div id="facesCard" class="result-card">
+          <h3>👤 People Detected</h3>
+          <div id="facesList"></div>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="search-section" id="searchSection">
+        <h3>🔍 Search Evidence Database</h3>
+        <p style="margin-bottom: 1rem; color: #666;">Try: "red car", "person with hoodie", "Pennsylvania license plate"</p>
+        <input type="text" class="search-input" id="searchInput" placeholder="Describe what you're looking for...">
+        <button class="search-button" onclick="searchEvidence()">Search</button>
+        <div id="searchResults" style="margin-top: 1rem;"></div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="dashboard-section" id="dashboardSection">
+        <h2>📊 Evidence Analytics Dashboard</h2>
+        <p style="margin-bottom: 2rem; color: #666;">Executive overview of evidence processing and investigation metrics</p>
+
+        <!-- Metric Cards -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-icon">📁</div>
+            <div class="metric-number" id="totalEvidence">0</div>
+            <div class="metric-label">Total Evidence Files</div>
+            <div class="metric-trend" id="evidenceTrend">↗️ Live</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">👤</div>
+            <div class="metric-number" id="peopleCount">0</div>
+            <div class="metric-label">People Detected</div>
+            <div class="metric-trend">↗️ Live</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">🎯</div>
+            <div class="metric-number" id="avgConfidence">—</div>
+            <div class="metric-label">Avg AI Confidence</div>
+            <div class="metric-trend" id="confTrend">↗️ Live</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">📝</div>
+            <div class="metric-number" id="platesSeen">0</div>
+            <div class="metric-label">Plates/Text Seen</div>
+            <div class="metric-trend">↗️ Live</div>
+          </div>
+        </div>
+
+        <!-- Evidence Sources / Object stats -->
+        <div class="dashboard-row">
+          <div class="dashboard-card">
+            <h4>📸 Evidence Sources (demo)</h4>
+            <div class="simple-chart">
+              <div class="chart-item">
+                <span class="chart-label">Body Cameras</span>
+                <div class="chart-bar"><div id="barBody" class="chart-fill" style="width: 0%; background:#3498db;"></div></div>
+                <span id="valBody" class="chart-value">0</span>
+              </div>
+              <div class="chart-item">
+                <span class="chart-label">Dash Cameras</span>
+                <div class="chart-bar"><div id="barDash" class="chart-fill" style="width: 0%; background:#2ecc71;"></div></div>
+                <span id="valDash" class="chart-value">0</span>
+              </div>
+              <div class="chart-item">
+                <span class="chart-label">Security Footage</span>
+                <div class="chart-bar"><div id="barSec" class="chart-fill" style="width: 0%; background:#e74c3c;"></div></div>
+                <span id="valSec" class="chart-value">0</span>
+              </div>
+              <div class="chart-item">
+                <span class="chart-label">Traffic Cameras</span>
+                <div class="chart-bar"><div id="barTraffic" class="chart-fill" style="width: 0%; background:#f39c12;"></div></div>
+                <span id="valTraffic" class="chart-value">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <h4>🔍 Most Detected Objects (session)</h4>
+            <div class="object-stats" id="objectStats">
+              <!-- Filled dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Officer Activity (placeholder demo) -->
+        <div class="dashboard-row">
+          <div class="dashboard-card">
+            <h4>👮 Officer Activity (demo)</h4>
+            <div class="officer-grid">
+              <div class="officer-stat">
+                <div class="officer-avatar">👮‍♂️</div>
+                <div>
+                  <div class="officer-name">Officer Johnson</div>
+                  <div class="officer-metrics"><span id="johnsonFiles">0 files</span> • <span id="johnsonConf">— avg conf</span></div>
+                </div>
+              </div>
+              <div class="officer-stat">
+                <div class="officer-avatar">👮‍♀️</div>
+                <div>
+                  <div class="officer-name">Officer Smith</div>
+                  <div class="officer-metrics"><span id="smithFiles">0 files</span> • <span id="smithConf">— avg conf</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="dashboard-card">
+            <h4>ℹ️ Notes</h4>
+            <p>Dashboard updates live when you analyze an image/video or run a search. All numbers are in-memory for demo purposes.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Simple in-memory session stats for dashboard ======
+    const stats = {
+      totalEvidence: 0,
+      peopleDetections: 0,
+      plateTextDetections: 0,
+      confidences: [],
+      sourceCounts: { body: 0, dash: 0, sec: 0, traffic: 0 },
+      objectCounts: {}
+    };
+
+    function updateDashboard() {
+      // Totals
+      document.getElementById('totalEvidence').textContent = stats.totalEvidence;
+      document.getElementById('peopleCount').textContent = stats.peopleDetections;
+      document.getElementById('platesSeen').textContent = stats.plateTextDetections;
+
+      // Avg confidence
+      if (stats.confidences.length) {
+        const avg = (stats.confidences.reduce((a,b)=>a+b,0) / stats.confidences.length).toFixed(1);
+        document.getElementById('avgConfidence').textContent = avg + '%';
+        document.getElementById('johnsonConf').textContent = avg + '% avg conf';
+        document.getElementById('smithConf').textContent = Math.max(70, (avg-3)).toFixed(1) + '% avg conf';
+      } else {
+        document.getElementById('avgConfidence').textContent = '—';
+      }
+
+      // Evidence sources (demo split based on file type presence)
+      const total = Math.max(1, stats.sourceCounts.body + stats.sourceCounts.dash + stats.sourceCounts.sec + stats.sourceCounts.traffic);
+      const pct = (n)=> Math.round(n / total * 100);
+      document.getElementById('barBody').style.width = pct(stats.sourceCounts.body) + '%';
+      document.getElementById('barDash').style.width = pct(stats.sourceCounts.dash) + '%';
+      document.getElementById('barSec').style.width = pct(stats.sourceCounts.sec) + '%';
+      document.getElementById('barTraffic').style.width = pct(stats.sourceCounts.traffic) + '%';
+      document.getElementById('valBody').textContent = stats.sourceCounts.body;
+      document.getElementById('valDash').textContent = stats.sourceCounts.dash;
+      document.getElementById('valSec').textContent = stats.sourceCounts.sec;
+      document.getElementById('valTraffic').textContent = stats.sourceCounts.traffic;
+
+      // Object counts
+      const container = document.getElementById('objectStats');
+      container.innerHTML = '';
+      const sorted = Object.entries(stats.objectCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      if (!sorted.length) {
+        container.innerHTML = '<p style="color:#888;">No objects detected yet</p>';
+      } else {
+        sorted.forEach(([name,count])=>{
+          const row = document.createElement('div');
+          row.className = 'object-stat';
+          row.innerHTML = `<span class="object-name">${name}</span><span class="object-count">${count} detections</span>`;
+          container.appendChild(row);
+        });
+      }
+
+      // Officer file counts (demo: split evenly)
+      document.getElementById('johnsonFiles').textContent = Math.ceil(stats.totalEvidence/2) + ' files';
+      document.getElementById('smithFiles').textContent = Math.floor(stats.totalEvidence/2) + ' files';
+    }
+
+    // ===== File upload & preview =====
+    const imageInput = document.getElementById('imageInput');
+    const previewSection = document.getElementById('previewSection');
+    const resultsSection = document.getElementById('resultsSection');
+    const previewImage = document.getElementById('previewImage');
+    const loadingSection = document.getElementById('loadingSection');
+
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      // naive demo: categorize source by filename keywords
+      const lower = (file.name || '').toLowerCase();
+      if (lower.includes('body')) stats.sourceCounts.body++;
+      else if (lower.includes('dash')) stats.sourceCounts.dash++;
+      else if (lower.includes('traffic')) stats.sourceCounts.traffic++;
+      else stats.sourceCounts.sec++;
+
+      if (file.type.startsWith('video/')) {
+        handleVideoFile(file);
+      } else if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          previewImage.src = ev.target.result;
+          previewSection.style.display = 'block';
+          resultsSection.style.display = 'none';
+        };
+        reader.onerror = () => alert('Could not read the file.');
+        reader.readAsDataURL(file);
+      } else {
+        alert('Unsupported file type.');
+      }
+      updateDashboard();
+    });
+
+    function handleVideoFile(file) {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.src = URL.createObjectURL(file);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const captureFrame = () => {
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageDataUrl = canvas.toDataURL('image/jpeg');
+        previewImage.src = imageDataUrl;
+        previewSection.style.display = 'block';
+        resultsSection.style.display = 'none';
+        window.videoFrame = imageDataUrl;
+        URL.revokeObjectURL(video.src);
+      };
+
+      video.addEventListener('loadeddata', () => { try { video.currentTime = 0.01; } catch(_){} });
+      video.addEventListener('seeked', captureFrame);
+      video.addEventListener('canplay', captureFrame);
+    }
+
+    // ===== Analyze image (calls backend /analyze-image) =====
+    async function analyzeImage() {
+      const file = imageInput.files && imageInput.files[0];
+      if (!file) {
+        alert('Please select an image or video first!');
+        return;
+      }
+
+      loadingSection.style.display = 'block';
+      resultsSection.style.display = 'none';
+
+      const formData = new FormData();
+
+      try {
+        if (file.type.startsWith('video/')) {
+          if (!window.videoFrame) {
+            alert('Please wait for the video to load.');
+            loadingSection.style.display = 'none';
+            return;
+          }
+          const resp = await fetch(window.videoFrame);
+          const blob = await resp.blob();
+          formData.append('image', blob, 'video_frame.jpg');
+        } else {
+          formData.append('image', file);
+        }
+
+        const resp = await fetch('/analyze-image', { method: 'POST', body: formData });
+        const payload = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) throw new Error(payload.error || 'Server error while analyzing image.');
+
+        displayResults(payload);
+        // Update dashboard from results
+        stats.totalEvidence += 1;
+        const objs = Array.isArray(payload.objects) ? payload.objects : [];
+        const txts = Array.isArray(payload.text_found) ? payload.text_found : [];
+        const faces = Array.isArray(payload.faces) ? payload.faces : [];
+        stats.peopleDetections += (typeof payload.faces_detected === 'number' ? payload.faces_detected : faces.length);
+        stats.plateTextDetections += txts.length;
+        objs.forEach(o => {
+          const name = (o && (o.name || o.label)) ? (o.name || o.label) : 'Object';
+          stats.objectCounts[name] = (stats.objectCounts[name] || 0) + 1;
+          const conf = typeof o.confidence === 'number' ? o.confidence : (o.score ? Math.round(o.score*100) : 0);
+          if (conf) stats.confidences.push(conf);
+        });
+        updateDashboard();
+      } catch (err) {
+        alert('Error analyzing: ' + err.message);
+      } finally {
+        loadingSection.style.display = 'none';
+      }
+    }
+
+    // ===== Render results safely =====
+    function displayResults(results) {
+      const summary = document.getElementById('summaryText');
+      summary.textContent = results.summary || 'No summary available.';
+
+      // Objects
+      const objectsList = document.getElementById('objectsList');
+      objectsList.innerHTML = '';
+      const objects = Array.isArray(results.objects) ? results.objects : [];
+      if (objects.length === 0) {
+        objectsList.innerHTML = '<p style="color:#888;">No objects detected</p>';
+      } else {
+        objects.forEach((obj) => {
+          const name = obj.name || obj.label || 'Object';
+          const conf = typeof obj.confidence === 'number' ? obj.confidence : (obj.score ? Math.round(obj.score * 100) : 0);
+          let confidenceClass = 'confidence-low';
+          if (conf >= 80) confidenceClass = 'confidence-high';
+          else if (conf >= 60) confidenceClass = 'confidence-medium';
+
+          const div = document.createElement('div');
+          div.className = 'object-item';
+          div.innerHTML = `
+            <div>
+              <span><strong>${name}</strong></span>
+              <div class="confidence-bar">
+                <div class="confidence-fill ${confidenceClass}" style="width:${conf}%"></div>
+              </div>
+              <small>${conf}% confidence</small>
+            </div>`;
+          objectsList.appendChild(div);
+        });
+      }
+
+      // Text
+      const textList = document.getElementById('textList');
+      textList.innerHTML = '';
+      const textFound = Array.isArray(results.text_found) ? results.text_found : [];
+      if (textFound.length === 0) {
+        textList.innerHTML = '<p style="color:#888;">No text detected in this image</p>';
+      } else {
+        textFound.forEach((t) => {
+          const value = typeof t === 'string' ? t : (t.text || t.description || '');
+          if (!value) return;
+          const div = document.createElement('div');
+          div.className = 'text-item';
+          div.innerHTML = `<span><strong>"${value}"</strong></span>`;
+          textList.appendChild(div);
+        });
+      }
+
+      // Faces
+      const facesList = document.getElementById('facesList');
+      facesList.innerHTML = '';
+      const faces = Array.isArray(results.faces) ? results.faces : [];
+      const facesDetected = typeof results.faces_detected === 'number' ? results.faces_detected : faces.length;
+      if (facesDetected > 0 && faces.length > 0) {
+        faces.forEach((face, i) => {
+          const conf = typeof face.confidence === 'number' ? face.confidence : (face.score ? Math.round(face.score * 100) : 0);
+          let confidenceClass = 'confidence-low';
+          if (conf >= 80) confidenceClass = 'confidence-high';
+          else if (conf >= 60) confidenceClass = 'confidence-medium';
+
+          const div = document.createElement('div');
+          div.className = 'object-item';
+          div.innerHTML = `
+            <div>
+              <span>Person ${i + 1}</span>
+              <div class="confidence-bar">
+                <div class="confidence-fill ${confidenceClass}" style="width: ${conf}%"></div>
+              </div>
+              <small>${conf}% confidence</small>
+            </div>`;
+          facesList.appendChild(div);
+        });
+      } else {
+        facesList.innerHTML = '<p style="color:#888;">No faces detected in this image</p>';
+      }
+
+      resultsSection.style.display = 'block';
+    }
+
+    // ===== CSV Export =====
+    function exportSearchResults(results) {
+      const headers = ['Image ID','Match Score','Objects Found','Text Found','Colors','Location','Officer','Confidence','Timestamp','Match Reasons'];
+      let csvContent = headers.join(',') + '\\n';
+
+      (results.results || []).forEach((r) => {
+        const row = [
+          r.image_id || '',
+          r.match_score || '',
+          '\"' + (Array.isArray(r.objects_found) ? r.objects_found.join('; ') : '') + '\"',
+          '\"' + (Array.isArray(r.text_found) ? r.text_found.join('; ') : '') + '\"',
+          '\"' + (Array.isArray(r.colors) ? r.colors.join('; ') : '') + '\"',
+          r.location || '',
+          r.officer || '',
+          (typeof r.confidence === 'number' ? r.confidence + '%' : ''),
+          r.timestamp || '',
+          '\"' + (Array.isArray(r.match_reasons) ? r.match_reasons.join('; ') : '') + '\"'
+        ];
+        csvContent += row.join(',') + '\\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `evidence_search_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // ===== Search endpoint call (kept working) =====
+    async function searchEvidence() {
+      const query = document.getElementById('searchInput').value || '';
+      if (!query.trim()) {
+        alert('Please enter a search query!');
+        return;
+      }
+
+      try {
+        const response = await fetch('/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+
+        const results = await response.json().catch(() => ({}));
+        const searchResults = document.getElementById('searchResults');
+        searchResults.innerHTML = '';
+
+        if (!response.ok) {
+          throw new Error(results.error || 'Search failed.');
+        }
+
+        if ((results.results_found || 0) > 0 && Array.isArray(results.results)) {
+          const exportButton = document.createElement('button');
+          exportButton.className = 'search-button';
+          exportButton.style.marginBottom = '1rem';
+          exportButton.textContent = '📊 Export Results to CSV';
+          exportButton.onclick = () => exportSearchResults(results);
+          searchResults.appendChild(exportButton);
+
+          results.results.forEach((r) => {
+            const div = document.createElement('div');
+            div.className = 'result-card';
+            div.innerHTML = `
+              <h4>📁 ${r.image_id || 'Unknown ID'}</h4>
+              <p><strong>🎯 Match Score:</strong> ${r.match_score ?? 'N/A'}</p>
+              <p><strong>🔍 Found:</strong> ${(Array.isArray(r.objects_found) ? r.objects_found.join(', ') : 'None')}</p>
+              <p><strong>📝 Text:</strong> ${(Array.isArray(r.text_found) ? r.text_found.join(', ') : 'None')}</p>
+              <p><strong>🎨 Colors:</strong> ${(Array.isArray(r.colors) ? r.colors.join(', ') : 'None')}</p>
+              <p><strong>📍 Location:</strong> ${r.location || 'Unknown'}</p>
+              <p><strong>👮 Officer:</strong> ${r.officer || 'Unknown'}</p>
+              <p><strong>✅ Confidence:</strong> ${typeof r.confidence === 'number' ? r.confidence + '%' : 'N/A'}</p>
+              <p><strong>⏰ Timestamp:</strong> ${r.timestamp || 'N/A'}</p>
+              ${Array.isArray(r.match_reasons) ? `<p><strong>🎯 Why it matched:</strong> ${r.match_reasons.join(', ')}</p>` : ''}
+            `;
+            searchResults.appendChild(div);
+
+            // feed dashboard (objects + confidence) from search hits
+            if (Array.isArray(r.objects_found)) {
+              r.objects_found.forEach(name => {
+                const key = String(name || 'Object');
+                stats.objectCounts[key] = (stats.objectCounts[key] || 0) + 1;
+              });
+            }
+            if (typeof r.confidence === 'number') stats.confidences.push(r.confidence);
+          });
+          updateDashboard();
+        } else {
+          searchResults.innerHTML = '<p style="color:#888;">No matching evidence found. Try terms like: "car", "person", "red", "pennsylvania", "hoodie", "license plate"</p>';
+        }
+      } catch (err) {
+        alert('Error searching: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

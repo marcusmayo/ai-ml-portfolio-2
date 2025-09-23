@@ -1,0 +1,19 @@
+# Python bytecode
+*.pyc
+__pycache__/
+
+# Virtual environments  
+venv/
+env/
+
+# IDE files
+.vscode/
+*.swp
+*~
+
+# Git
+.git/
+.gitignore
+
+# Other
+.DS_Store
