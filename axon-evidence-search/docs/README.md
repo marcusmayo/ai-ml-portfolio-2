@@ -2,7 +2,7 @@
 
 > **A production-grade AI system that helps law enforcement investigators analyze digital evidence 10x faster using computer vision and machine learning.**
 
-[![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-Click%20Here-blue)](https://ai-ml-portfolio-473014.uc.r.appspot.com/)
+[![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-Click%20Here-blue)](https://ai-ml-portfolio-473014.ue.r.appspot.com/)
 [![GitHub](https://img.shields.io/badge/GitHub-View%20Code-black)](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/axon-evidence-search)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Deployed-green)](https://console.cloud.google.com/appengine)
 
@@ -659,3 +659,4 @@ This project is built for demonstration and educational purposes. The code is op
 **Built with ❤️ for law enforcement professionals who risk their lives to keep us safe.**
 
 *Last updated: September 23, 2025*
+
