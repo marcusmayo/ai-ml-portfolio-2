@@ -1,0 +1,25 @@
+INTERVIEWER: Hi! Thanks for taking the time to chat with us today. How are you feeling?
+
+CANDIDATE: I'm doing great, thank you! I'm really excited about this opportunity. I've been following your company's work in AI safety for a while now, and I think what you're building is incredibly important.
+
+INTERVIEWER: That's wonderful to hear. Can you tell me about your experience with large language models?
+
+CANDIDATE: Absolutely. In my last role, I worked extensively with GPT-based models and built a RAG system for document analysis. I implemented retrieval-augmented generation to improve accuracy and reduce hallucinations. The system handled over 10,000 queries per day with 95% accuracy.
+
+INTERVIEWER: Impressive. How did you handle edge cases where the model might produce unsafe outputs?
+
+CANDIDATE: Great question. I implemented multiple safety layers. First, content filtering using toxicity detection models. Second, output validation against a predefined rubric. And third, human-in-the-loop review for high-stakes decisions. I believe AI safety isn't just about the model itself, but the entire system around it.
+
+INTERVIEWER: I really like that holistic approach. Can you tell me about a time you had to debug a complex issue?
+
+CANDIDATE: Sure. We had a situation where our model's performance degraded by 20% after a data pipeline update. I systematically investigated each component, found that our tokenization had changed slightly, and worked with the team to fix it. The key was methodical debugging and clear communication with stakeholders about the issue and timeline.
+
+INTERVIEWER: Excellent problem-solving. How do you stay current with the rapid changes in AI?
+
+CANDIDATE: I read research papers weekly, particularly from labs like Anthropic, OpenAI, and DeepMind. I also contribute to open-source projects and attend AI safety conferences. I think it's crucial to stay connected to both the research community and practical applications.
+
+INTERVIEWER: That's great. We're really impressed with your background. The next step would be a technical interview with our engineering team. HR will reach out with details. Do you have any questions for me?
+
+CANDIDATE: Yes! I'd love to know more about your team's approach to responsible AI development and what projects I might work on in the first six months.
+
+INTERVIEWER: Excellent questions. We're excited to move forward with your application.
