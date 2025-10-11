@@ -388,6 +388,10 @@ This project demonstrates modern AI-augmented development practices, where advan
 
 ---
 
+### 🧠 Read My AI Build Logs
+- [Weekend AI Project Series on Dev.to](https://dev.to/marcusmayo)
+- [LinkedIn Articles](https://www.linkedin.com/in/marcusmayo)
+
 ## 📫 Get In Touch
 
 **LinkedIn:** [Connect with me](https://linkedin.com/in/marcusmayo)  
@@ -396,6 +400,7 @@ This project demonstrates modern AI-augmented development practices, where advan
 **Live Demo:** [Axon Evidence Search](https://ai-ml-portfolio-473014.uc.r.appspot.com/)
 
 ---
+
 
 ⭐ **Star this repository if you find it helpful!** Your support motivates me to keep building and sharing innovative ML solutions for real-world enterprise applications.
 
