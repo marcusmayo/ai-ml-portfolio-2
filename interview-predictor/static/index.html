@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Predictor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover { transform: translateY(-2px); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results.show { display: block; }
+        
+        .prediction-card {
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .prediction-card.likely { background: #d4edda; color: #155724; }
+        .prediction-card.unlikely { background: #f8d7da; color: #721c24; }
+        .prediction-card.inconclusive { background: #fff3cd; color: #856404; }
+        
+        .score { font-size: 48px; font-weight: bold; margin: 10px 0; }
+        
+        .component {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Interview Predictor</h1>
+        <p class="subtitle">Analyze interview transcripts and recordings to predict outcomes using ensemble ML techniques</p>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('audio')">Upload Audio</button>
+            <button class="tab" onclick="switchTab('text')">Paste Transcript</button>
+        </div>
+        
+        <div id="audio-tab" class="tab-content active">
+            <div class="upload-area" onclick="document.getElementById('audioFile').click()">
+                <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+                <div style="font-size: 18px; color: #667eea; margin-bottom: 10px;">Click to select audio file</div>
+                <div style="color: #999;">Supports MP3, WAV, M4A up to 200MB</div>
+            </div>
+            
+            <input type="file" id="audioFile" accept=".mp3,.wav,.m4a" onchange="handleFileSelect(event)">
+            
+            <div id="fileInfo" style="display:none; background:#f8f9ff; padding:15px; border-radius:10px; margin-bottom:20px;">
+                <strong id="fileName"></strong><br>
+                <span id="fileSize"></span>
+            </div>
+            
+            <select id="modelSize" style="padding:10px; border:2px solid #e0e0e0; border-radius:8px; margin-bottom:20px; width:200px;">
+                <option value="tiny">Tiny (fastest)</option>
+                <option value="base" selected>Base (recommended)</option>
+                <option value="small">Small (more accurate)</option>
+                <option value="medium">Medium (most accurate)</option>
+            </select>
+            
+            <button class="btn" id="analyzeAudioBtn" onclick="analyzeAudio()" disabled>Analyze Interview</button>
+        </div>
+        
+        <div id="text-tab" class="tab-content">
+            <textarea id="transcript" placeholder="Paste interview transcript here..."></textarea>
+            <button class="btn" onclick="analyzeText()">Analyze Interview</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <p>⏳ Processing... This may take several minutes for large files.</p>
+        </div>
+        
+        <div class="results" id="results"></div>
+    </div>
+    
+    <script>
+        let selectedFile = null;
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+        
+        function handleFileSelect(event) {
+            selectedFile = event.target.files[0];
+            if (!selectedFile) return;
+            
+            document.getElementById('fileName').textContent = selectedFile.name;
+            document.getElementById('fileSize').textContent = `${(selectedFile.size / (1024*1024)).toFixed(2)} MB`;
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('analyzeAudioBtn').disabled = false;
+        }
+        
+        async function analyzeAudio() {
+            if (!selectedFile) return;
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('model_size', document.getElementById('modelSize').value);
+            
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            
+            try {
+                const response = await fetch('/api/analyze-audio', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+            }
+        }
+        
+        async function analyzeText() {
+            const transcript = document.getElementById('transcript').value;
+            if (!transcript.trim()) {
+                alert('Please paste a transcript first');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('transcript', transcript);
+            
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            
+            try {
+                const response = await fetch('/api/analyze-text', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+            }
+        }
+        
+        function displayResults(data) {
+            const cardClass = data.prediction.toLowerCase();
+            
+            let html = `
+                <div class="prediction-card ${cardClass}">
+                    <h2>${data.prediction === 'Likely' ? '✅' : data.prediction === 'Unlikely' ? '❌' : '⚠️'} ${data.prediction}</h2>
+                    <div class="score">${data.score}%</div>
+                    <p>Confidence: ${data.confidence}</p>
+                </div>
+                
+                <h3 style="margin:20px 0 10px;">Component Breakdown</h3>
+            `;
+            
+            for (const [component, score] of Object.entries(data.component_scores)) {
+                html += `
+                    <div class="component">
+                        <strong>${component.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</strong>: ${score}%
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${score}%"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('results').innerHTML = html;
+            document.getElementById('results').classList.add('show');
+        }
+    </script>
+</body>
+</html>
