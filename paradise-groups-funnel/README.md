@@ -16,7 +16,7 @@ A production-ready, serverless lead-generation system that captures qualified le
 
 ### Scan to Experience the Quiz
 
-![QR Code](docs/images/qr-code.png)
+![QR Code](screenshots/qr-code.png)
 
 **Or visit:** [paradise-vibe-finder.lovable.app](https://paradise-vibe-finder.lovable.app/)
 
@@ -42,14 +42,14 @@ A **free, organic funnel** that:
 ## 🎨 Visual Walkthrough
 
 ### Landing Page
-![Landing Page](docs/images/01-landing.png)
+![Landing Page](screenshots/01-landing.png)
 
 Clean, inviting design with tropical beach background and clear value proposition.
 
 ---
 
 ### Question 1: Choose Your Vibe
-![Question 1](docs/images/02-vibe-question.png)
+![Question 1](screenshots/02-vibe-question.png)
 
 Users select from 5 personality-driven vacation styles:
 - 🧘 **Chill & Relaxing** - Hammocks, spa, peaceful moments
@@ -61,7 +61,7 @@ Users select from 5 personality-driven vacation styles:
 ---
 
 ### Question 2: Select Your Interests
-![Question 2](docs/images/03-interests.png)
+![Question 2](screenshots/03-interests.png)
 
 Multi-select to capture specific preferences:
 - 🏖️ Beach time
@@ -74,31 +74,31 @@ Multi-select to capture specific preferences:
 ---
 
 ### Question 3: Travel Timeline
-![Question 3](docs/images/04-timeline.png)
+![Question 3](screenshots/04-timeline.png)
 
 Dropdown with months plus "Just browsing" option for early-stage browsers.
 
 ---
 
 ### Question 4: Budget Range
-![Question 4](docs/images/05-budget.png)
+![Question 4](screenshots/05-budget.png)
 
 Three friendly budget tiers:
-- 💰 **Budget-Friendly** ($$) - Value-conscious
-- 💎 **Moderate** ($$$) - Comfortable
-- ✨ **Luxury** ($$$$) - Premium experience
+- 💰 **Budget-Friendly** ($) - Value-conscious
+- 💎 **Moderate** ($$) - Comfortable
+- ✨ **Luxury** ($$) - Premium experience
 
 ---
 
 ### Question 5: Contact Info
-![Question 5](docs/images/06-contact.png)
+![Question 5](screenshots/06-contact.png)
 
 Email required, WhatsApp optional. Clear privacy message builds trust.
 
 ---
 
 ### Results: Personalized Itinerary
-![Results Page](docs/images/07-results.png)
+![Results Page](screenshots/07-results.png)
 
 Instant gratification with:
 - ✅ 2-day custom itinerary
@@ -346,6 +346,7 @@ paradise-groups-funnel/
 │       └── places.json            # Local POI data
 ├── infra/
 │   ├── Dockerfile                 # Production container
+│   ├── docker-compose.yaml        # Local development
 │   └── github/
 │       └── workflows/
 │           └── ci.yml             # CI/CD pipeline (ready)
@@ -353,9 +354,20 @@ paradise-groups-funnel/
 │   ├── test_api.py               # API unit tests
 │   └── test_schemas.py           # Schema validation tests
 ├── docs/
-│   ├── images/                   # Screenshots and QR code
 │   ├── DEPLOYMENT_NOTES.md       # Current status
 │   └── PROJECT_PLAN.md           # Original plan
+├── screenshots/
+│   ├── 01-landing.png            # Quiz screenshots
+│   ├── 02-vibe-question.png
+│   ├── 03-interests.png
+│   ├── 04-timeline.png
+│   ├── 05-budget.png
+│   ├── 06-contact.png
+│   ├── 07-results.png
+│   └── qr-code.png
+├── notebooks/
+│   └── exploration.ipynb         # Data exploration
+├── deploy.sh                     # Quick deployment script
 ├── requirements.txt              # Python dependencies
 ├── .env.example                  # Environment template
 ├── .gitignore
