@@ -81,24 +81,28 @@ The **AI-Powered Interview Performance Analyzer** is a production-grade ML pipel
 
 **Analysis Results - Full Dashboard**
 ![Analysis Results](./screenshots/analyzer-fullscreen.png)
+
 *Comprehensive breakdown of interview performance across 5 dimensions with model selection*
 
 ---
 
 **Detailed Component Scores**
 ![Component Scores](./screenshots/analyzer-close.png)
+
 *Sentiment: 57.38% | Toxicity: 99.93% | Competency: 66.27% | Keywords: 100% | Filler: 100%*
 
 ---
 
 **Performance Timeline Visualization**
 ![Performance Timeline](./screenshots/pf-timeline.png)
+
 *Color-coded timeline showing performance variations throughout the interview*
 
 ---
 
 **AI-Generated Feedback**
 ![AI Feedback](./screenshots/ai-analysis.png)
+
 *Personalized feedback with strengths, improvement areas, and actionable next steps*
 
 ---
@@ -458,7 +462,7 @@ pip install -r requirements.txt  # Now installs in venv
 - [x] Dual input modes (audio + transcript)
 - [x] Production FastAPI backend
 
-### 🚀 High-Priority Next Features (This Week)
+### 🚀 High-Priority Next Features
 
 #### 1. WhisperX Word-Level Analysis ⭐⭐⭐
 **Effort**: 6-8 hours | **Impact**: Highest wow factor
