@@ -743,7 +743,7 @@ This project is proprietary software developed for Your Paradise boutique hotel.
 - **Marcus Mayo**
 - **LinkedIn:** [Connect with me](https://linkedin.com/in/marcusmayo)
 - **Email:** marcusmayo@hotmail.com
-- **Portfolio Part 1:** [Healthcare AI & MLOps Projects](https://github.com/marcusmayo/machine-learning-portfolio)
+- **Portfolio Part 1:** [AI & MLOps Projects](https://github.com/marcusmayo/machine-learning-portfolio)
 - **Dev.to Blog:** [Weekend AI Project Series](https://dev.to/marcusmayo)
 
 ---
