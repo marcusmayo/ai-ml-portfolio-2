@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px; }
+        #result { white-space: pre-wrap; background: #f4f4f4; padding: 20px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Simple API Test</h1>
+    <input type="file" id="file" accept=".mp3,.wav,.m4a">
+    <button onclick="test()">Upload & Analyze</button>
+    <div id="result"></div>
+    
+    <script>
+    function test() {
+        const fileInput = document.getElementById('file');
+        const resultDiv = document.getElementById('result');
+        
+        if (!fileInput.files[0]) {
+            resultDiv.textContent = 'Please select a file first';
+            return;
+        }
+        
+        resultDiv.textContent = 'Uploading...';
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('model_size', 'tiny');
+        formData.append('client_id', 'test123');
+        
+        fetch('/api/analyze-audio', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            resultDiv.textContent = 
+                'PREDICTION: ' + data.prediction + '\n' +
+                'SCORE: ' + data.score + '%\n' +
+                'CONFIDENCE: ' + data.confidence + '\n\n' +
+                'COMPONENTS:\n' + 
+                Object.entries(data.component_scores)
+                    .map(([k,v]) => k + ': ' + v + '%')
+                    .join('\n') +
+                '\n\nTIMELINE BINS: ' + (data.timeline?.bins?.length || 0);
+        })
+        .catch(err => {
+            resultDiv.textContent = 'Error: ' + err.message;
+        });
+    }
+    </script>
+</body>
+</html>

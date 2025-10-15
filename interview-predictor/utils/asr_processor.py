@@ -1,91 +1,56 @@
 """
-ASR (Automatic Speech Recognition) Processor
-Handles speech-to-text conversion using faster-whisper
+ASR Processor using faster-whisper (Fixed to return segments)
 """
 
-import os
-from typing import Optional, Dict
 from faster_whisper import WhisperModel
 
 
 class ASRProcessor:
-    """Processes audio files and converts them to text transcriptions"""
+    """Handles audio-to-text transcription with segments"""
     
-    def __init__(self, model_size: str = "base"):
-        """
-        Initialize the ASR processor
-        
-        Args:
-            model_size: Whisper model size (tiny, base, small, medium, large-v3)
-                       - tiny: fastest, least accurate
-                       - base: good balance (recommended for demo)
-                       - large-v3: most accurate, slowest
-        """
+    def __init__(self, model_size="base"):
         self.model_size = model_size
         self.model = None
         
     def load_model(self):
-        """Load the Whisper model (lazy loading to save memory)"""
+        """Load Whisper model"""
         if self.model is None:
-            print(f"Loading Whisper model: {self.model_size}...")
+            print(f"Loading Whisper model: {self.model_size}")
             self.model = WhisperModel(
                 self.model_size,
-                device="cpu",  # Use CPU for compatibility
-                compute_type="int8"  # Quantized for speed
+                device="cpu",
+                compute_type="int8"
             )
-            print("Model loaded successfully")
+            print("Model loaded")
     
-    def transcribe_audio(self, audio_path: str) -> Dict[str, any]:
-        """
-        Transcribe an audio file to text
-        
-        Args:
-            audio_path: Path to audio file (mp3, wav, m4a, etc.)
-            
-        Returns:
-            Dictionary containing:
-                - text: Full transcription
-                - language: Detected language
-                - segments: List of timestamped segments
-        """
+    def transcribe_audio(self, audio_path):
+        """Transcribe audio file and return segments"""
         self.load_model()
         
-        if not os.path.exists(audio_path):
-            raise FileNotFoundError(f"Audio file not found: {audio_path}")
-        
-        print(f"Transcribing: {audio_path}")
-        
-        # Transcribe with faster-whisper
         segments, info = self.model.transcribe(
             audio_path,
             beam_size=5,
-            vad_filter=True,  # Voice activity detection
-            vad_parameters=dict(min_silence_duration_ms=500)
+            language="en"
         )
         
-        # Collect all segments
-        full_text = ""
+        # Convert segments to list (important!)
         segment_list = []
+        full_text = ""
         
         for segment in segments:
-            full_text += segment.text + " "
-            segment_list.append({
+            segment_data = {
                 "start": segment.start,
                 "end": segment.end,
-                "text": segment.text
-            })
+                "text": segment.text.strip()
+            }
+            segment_list.append(segment_data)
+            full_text += segment.text + " "
+        
+        print(f"ASR: Transcribed {len(segment_list)} segments, duration: {info.duration:.1f}s")
         
         return {
             "text": full_text.strip(),
             "language": info.language,
-            "segments": segment_list,
-            "duration": info.duration
-        }
-    
-    def get_model_info(self) -> Dict[str, str]:
-        """Get information about the loaded model"""
-        return {
-            "model_size": self.model_size,
-            "device": "cpu",
-            "compute_type": "int8"
+            "duration": info.duration,
+            "segments": segment_list  # This is the key fix!
         }
