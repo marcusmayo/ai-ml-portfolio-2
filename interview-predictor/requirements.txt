@@ -3,16 +3,18 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
-# Essential ML dependencies
-numpy==1.26.0
+# ML/NLP
 torch==2.1.1
 transformers==4.35.2
 sentencepiece==0.2.0
 protobuf==4.25.1
 
 # Audio processing
-faster-whisper==1.0.0
+openai-whisper==20231117
 soundfile==0.12.1
 
-# Storage
-google-cloud-storage==2.18.0
+# AI Feedback
+google-generativeai==0.3.1
+
+# Utilities
+numpy==1.26.0
