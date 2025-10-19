@@ -1,0 +1,20 @@
+# Web Framework (we'll use FastAPI for the API)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Google Cloud
+google-cloud-firestore==2.13.1
+google-cloud-storage==2.10.0
+
+# Utilities
+python-dotenv==1.0.0
+python-multipart==0.0.6
+
+# Development (optional, for local testing)
+pytest==7.4.3
+requests==2.31.0
+
+# Email validation
+email-validator==2.1.0

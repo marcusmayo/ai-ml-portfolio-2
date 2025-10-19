@@ -2,38 +2,51 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
 venv/
 env/
-.venv/
+ENV/
+.venv
 
-# Environment
+# Environment variables - NEVER COMMIT
 .env
 *.env
 !.env.example
 
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # Logs
 *.log
 /tmp/
+logs/
+nohup.out
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups - LOCAL ONLY
+backups/
+*.backup*
+*.bak
 
 # Data
-data/raw/*
-data/processed/*
+*.csv
+*.xlsx
+*.db
+*.sqlite
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Jupyter
-.ipynb_checkpoints/
-
-# Distribution
+# Build
 dist/
 build/
 *.egg-info/
-
-# Docker
-*.tar.gz
-
-# OS
-.DS_Store
