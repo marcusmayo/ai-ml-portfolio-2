@@ -3,116 +3,8 @@ LangGraph Agent for Goal Planning
 Multi-node workflow: Planner → Router → Plan Generator → Evaluator
 """
 from typing import Dict, Any, List, TypedDict
-from langgraph.graph import StateGraph, END
-import logging
+from datetime import datetime
 import json
-
-# Configure logger
-logger = logging.getLogger(__name__)
-
-def bedrock_text_from_result(result: Any) -> str:
-    """
-    Extract plain text from various Bedrock/Claude response shapes.
-    Also writes the raw structure or text to /tmp/goalpilot_bedrock_last.txt for debugging.
-    Returns "" if nothing useful found.
-    """
-    # best-effort raw dump
-    try:
-        os.makedirs("/tmp", exist_ok=True)
-        with open("/tmp/goalpilot_bedrock_last.txt", "w") as f:
-            f.write(str(result) if result is not None else "")
-    except Exception:
-        pass
-
-    # If already a string
-    if isinstance(result, str):
-        return result
-
-    # Common Bedrock for Claude (Messages API)
-    # {'content': [{'text': '...'}], ...}
-    try:
-        content = result.get("content")
-        if isinstance(content, list) and content and isinstance(content[0], dict):
-            if "text" in content[0] and isinstance(content[0]["text"], str):
-                return content[0]["text"]
-    except Exception:
-        pass
-
-    # Some SDKs: {'outputText': '...'}
-    try:
-        if isinstance(result, dict) and isinstance(result.get("outputText"), str):
-            return result["outputText"]
-    except Exception:
-        pass
-
-    # Some SDKs: {'outputs': [{'text': '...'}]}
-    try:
-        outs = result.get("outputs")
-        if isinstance(outs, list) and outs and isinstance(outs[0], dict):
-            t = outs[0].get("text")
-            if isinstance(t, str):
-                return t
-    except Exception:
-        pass
-
-    # Fallback: None / not recognized
-    return ""
-
-def safe_json_from_text(text: str):
-    """
-    Extract a JSON object from arbitrary text. Supports:
-    - raw JSON
-    - fenced blocks ```json ... ```
-    - commentary before/after JSON
-    - returns a dict/list or raises JSONDecodeError/ValueError
-    Also writes the raw reply to /tmp/goalpilot_bedrock_last.txt for debugging.
-    """
-    try:
-        os.makedirs("/tmp", exist_ok=True)
-        with open("/tmp/goalpilot_bedrock_last.txt", "w") as f:
-            f.write(text or "")
-    except Exception:
-        pass
-
-    if not text or not text.strip():
-        raise ValueError("LLM returned empty response")
-
-    t = text.strip()
-
-    # 1) try direct parse
-    try:
-        return safe_json_from_text(t)
-    except Exception:
-        pass
-
-    # 2) fenced block ```json ... ```
-    m = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", t, re.IGNORECASE)
-    if m:
-        block = m.group(1)
-        try:
-            return json.loads(block)
-        except Exception:
-            pass
-
-    # 3) generic braces: first '{' to last '}' (greedy)
-    start = t.find('{')
-    end   = t.rfind('}')
-    if start != -1 and end > start:
-        candidate = t[start:end+1]
-        # quick cleanup of trailing commas in simple cases
-        candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
-        return json.loads(candidate)
-
-    # 4) try to find list JSON too
-    start = t.find('[')
-    end   = t.rfind(']')
-    if start != -1 and end > start:
-        candidate = t[start:end+1]
-        candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
-        return safe_json_from_text(candidate)
-
-    # nothing found
-    raise ValueError("No JSON object/array found in response")
 import re
 
 from langgraph.graph import StateGraph, END
@@ -173,36 +65,25 @@ User Profile: {state['user_profile']}
 
 Analyze this financial goal and provide structured output."""
 
-        # ---- Extract, parse, and classify planner response (single try) ----
-
-    # ---- LLM call + parse (single try) ----
     try:
-        # 1) Call Bedrock (capture the raw response object)
         response = bedrock_client.invoke(
             messages=[{"role": "user", "content": user_message}],
             system=system_prompt,
             max_tokens=1000,
             temperature=0.2
         )
-
-        # 2) Normalize to plain text (works for dict/object/string)
-        response_text = bedrock_text_from_result(response) or ""
-        logger.info(f"PLANNER: Got response ({len(response_text)} chars)")
-
-        # 3) Parse JSON from text (handles prose + fenced code)
-        raw_text = response_text.strip()
-        logger.info(f"PLANNER: Extracted text: {len(raw_text)} chars")
-        result = safe_json_from_text(raw_text)  # {} on failure
-
-        # 4) Fill state (always present)
+        
+        # Parse JSON response
+        result = json.loads(response)
+        
         state['goal_type'] = result.get('goal_type', 'general')
-        state['analysis']  = result.get('analysis', '')
-
+        state['analysis'] = result.get('analysis', '')
+        
         logger.info(f"PLANNER: Classified as '{state['goal_type']}'")
         return state
-
+        
     except Exception as e:
-        logger.error(f"PLANNER error: {e}")
+        logger.error(f"Planner error: {e}")
         state['error'] = f"Planning failed: {str(e)}"
         return state
 
@@ -280,142 +161,109 @@ def router_node(state: AgentState) -> AgentState:
 
 def plan_generator_node(state: AgentState) -> AgentState:
     """
-    Build user-facing plan using API data and LLM output.
-    Priority: 1) JSON with plan_steps 2) Extract JSON from text 3) Line parsing
+    Build the user-facing plan (summary + plan_steps) using API data and/or model output.
+    Priority order:
+      1) Well-formed JSON (dict or JSON string) with `plan_steps`
+      2) Extract JSON from text that contains a JSON block
+      3) Fallback line-based parsing from plain text
     Never overwrite non-empty plan_steps with empty results.
     """
-    import json
-    import re
-    from typing import Any, Dict, List
-
     logger.info("PLAN GENERATOR: Creating plan with API data")
-
-    # Helper: Normalize step keys
+    
+    # Helper function to normalize step keys
     def _coerce_step(d: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        """Normalize different step key variants"""
         return {
             "step_number": d.get("step_number") or d.get("step") or idx,
-            "title": d.get("title") or d.get("action") or f"Step {idx}",
-            "description": d.get("description") or d.get("details") or "",
-            "estimated_duration": d.get("estimated_duration") or d.get("timeline") or "TBD",
+            "title": d.get("title") or d.get("action") or d.get("step_title") or f"Step {idx}",
+            "description": d.get("description") or d.get("details") or d.get("step_description") or "",
+            "estimated_duration": d.get("estimated_duration") or d.get("timeline") or d.get("duration") or "TBD",
             "resources_needed": d.get("resources_needed") or d.get("resources") or []
         }
-
-    # Helper: Extract JSON from mixed text
-    def _parse_json_from_text(text: str) -> Dict[str, Any]:
+    
+    # Helper function to extract JSON from mixed text
+    def _extract_json_from_text(text: str) -> Any:
+        """Extract JSON object or array from text that may contain other content"""
         patterns = [
-            r'\{[^{}]*"plan_steps"[^{}]*\[[^\]]*\][^{}]*\}',
-            r'\[[^\[\]]*\{[^\}]*"step_number"[^\}]*\}[^\[\]]*\]',
+            r'\{[^{}]*"plan_steps"[^{}]*\[[^\]]*\][^{}]*\}',  # Object with plan_steps array
+            r'\[[^\[\]]*\{[^\}]*"step_number"[^\}]*\}[^\[\]]*\]',  # Array of step objects
+            r'\{(?:[^{}]|\{[^{}]*\})*\}',  # Any JSON object
+            r'\[(?:[^\[\]]|\[[^\[\]]*\])*\]'  # Any JSON array
         ]
+        
         for pattern in patterns:
             match = re.search(pattern, text, re.DOTALL)
             if match:
                 try:
-                    return safe_json_from_text(match.group(0))
+                    return json.loads(match.group(0))
                 except:
                     continue
-        # Fallback: find balanced braces
-        start = text.find('{')
-        if start >= 0:
-            count = 0
-            for i in range(start, len(text)):
-                if text[i] == '{': count += 1
-                elif text[i] == '}':
-                    count -= 1
-                    if count == 0:
-                        try:
-                            return safe_json_from_text(text[start:i+1])
-                        except:
-                            break
-        return {}
-
-    # Helper: Extract steps and summary
-    def _extract_steps_and_summary(obj: Any) -> tuple:
-        if obj is None:
-            return [], ""
-        
-        data = {}
-        if isinstance(obj, dict):
-            data = obj
-        elif isinstance(obj, str):
-            try:
-                data = safe_json_from_text(obj)
-            except:
-                data = _parse_json_from_text(obj)
-        
-        if not isinstance(data, dict):
-            return [], ""
-        
-        steps = data.get("plan_steps") or data.get("steps") or []
-        summary = data.get("summary") or ""
-        
-        if not steps:
-            container = data.get("plan") or data.get("result") or {}
-            if isinstance(container, dict):
-                steps = container.get("plan_steps") or container.get("steps") or []
-                summary = summary or container.get("summary") or ""
-        
-        if isinstance(steps, list):
-            norm = [_coerce_step(s if isinstance(s, dict) else {}, i) for i, s in enumerate(steps, 1)]
-            norm = [s for s in norm if s["title"] or s["description"]]
-            return norm, str(summary or "").strip()
-        
-        return [], str(summary or "").strip()
-
-    # Helper: Fallback line parsing
-    def _fallback_line_parse(text: str) -> List[Dict[str, Any]]:
-        if not text:
-            return []
+        return None
+    
+    # Helper function to parse line-based format
+    def _parse_line_based(text: str) -> List[Dict[str, Any]]:
+        """Parse steps from numbered list format"""
         steps = []
-        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-        current = None
+        lines = text.strip().split('\n')
+        current_step = None
         
         for line in lines:
+            line = line.strip()
+            # Match: "1. Title" or "Step 1: Title"
             match = re.match(r'^(?:Step\s+)?(\d+)[\.:)\s]+(.+)$', line, re.IGNORECASE)
             if match:
-                if current:
-                    steps.append(current)
-                current = {
+                if current_step:
+                    steps.append(current_step)
+                current_step = {
                     "step_number": int(match.group(1)),
                     "title": match.group(2).strip(),
                     "description": "",
                     "estimated_duration": "TBD",
                     "resources_needed": []
                 }
-            elif current and line:
-                current["description"] += " " + line
+            elif current_step and line:
+                current_step["description"] += " " + line
         
-        if current:
-            steps.append(current)
+        if current_step:
+            steps.append(current_step)
+        
         return steps
-
+    
     try:
-        api_context = json.dumps(state['api_data'], indent=2) if state['api_data'] else "No API data"
+        # Build context for the LLM
+        api_context = json.dumps(state['api_data'], indent=2) if state['api_data'] else "No API data available"
         
-        system_prompt = """You are a financial planning assistant. Create 10-15 actionable steps.
+        system_prompt = """You are a financial planning assistant. Create a detailed, actionable plan with 10-15 specific steps.
 
-Return ONLY valid JSON:
+Return ONLY a JSON object in this exact format:
 {
-    "summary": "Brief overview",
+    "summary": "Brief overview of the plan",
     "plan_steps": [
         {
             "step_number": 1,
-            "title": "Action title",
-            "description": "Clear explanation",
-            "estimated_duration": "Timeframe",
+            "title": "Clear action title",
+            "description": "Detailed explanation of what to do and why",
+            "estimated_duration": "Time to complete",
             "resources_needed": ["Resource 1", "Resource 2"]
         }
     ]
-}"""
+}
+
+Each step must be:
+- Specific and actionable
+- Include clear description
+- Have realistic timeline
+- List concrete resources"""
 
         user_message = f"""Goal: {state['goal']}
-User: {state['user_profile']}
-Type: {state['goal_type']}
+User Profile: {state['user_profile']}
+Goal Type: {state['goal_type']}
 Analysis: {state['analysis']}
 
-Data:
+Financial Data Available:
 {api_context}
 
-Create comprehensive plan with 10-15 steps."""
+Create a comprehensive financial plan with 10-15 actionable steps."""
 
         response = bedrock_client.invoke(
             messages=[{"role": "user", "content": user_message}],
@@ -426,25 +274,33 @@ Create comprehensive plan with 10-15 steps."""
         
         parsed_steps = []
         
+        # Try parsing response as direct JSON
         try:
-            data = safe_json_from_text(response)
-            parsed_steps, summary = _extract_steps_and_summary(data)
-            if summary:
-                state['summary'] = summary
+            data = json.loads(response)
+            if isinstance(data, dict) and "plan_steps" in data:
+                parsed_steps = [_coerce_step(s, i+1) for i, s in enumerate(data["plan_steps"])]
+                state['summary'] = data.get('summary', '')
+            elif isinstance(data, list):
+                parsed_steps = [_coerce_step(s, i+1) for i, s in enumerate(data)]
         except json.JSONDecodeError:
-            extracted = _parse_json_from_text(response)
+            # Try extracting JSON from text
+            extracted = _extract_json_from_text(response)
             if extracted:
-                parsed_steps, summary = _extract_steps_and_summary(extracted)
-                if summary:
-                    state['summary'] = summary
+                if isinstance(extracted, dict) and "plan_steps" in extracted:
+                    parsed_steps = [_coerce_step(s, i+1) for i, s in enumerate(extracted["plan_steps"])]
+                    state['summary'] = extracted.get('summary', '')
+                elif isinstance(extracted, list):
+                    parsed_steps = [_coerce_step(s, i+1) for i, s in enumerate(extracted)]
             else:
-                parsed_steps = _fallback_line_parse(response)
+                # Fallback to line-based parsing
+                parsed_steps = _parse_line_based(response)
         
+        # Only update if we got steps
         if parsed_steps:
             state['plan_steps'] = parsed_steps
             logger.info(f"PLAN GENERATOR: Created {len(parsed_steps)} steps")
         else:
-            logger.warning("PLAN GENERATOR: No steps parsed")
+            logger.warning("PLAN GENERATOR: No steps parsed, keeping existing steps")
         
         return state
         

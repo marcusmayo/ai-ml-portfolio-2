@@ -9,11 +9,6 @@ env/
 ENV/
 .venv
 
-# Environment variables - NEVER COMMIT
-.env
-*.env
-!.env.example
-
 # IDE
 .vscode/
 .idea/
@@ -22,31 +17,23 @@ ENV/
 
 # Logs
 *.log
+*.out
 /tmp/
-logs/
-nohup.out
 
-# OS
+# Environment
+.env
+*.env
+
+# AWS
+*.pem
+.aws/
+
+# Backups
+backups/
+
+# System
 .DS_Store
 Thumbs.db
 
-# Backups - LOCAL ONLY
-backups/
-*.backup*
-*.bak
-
-# Data
-*.csv
-*.xlsx
-*.db
-*.sqlite
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Build
-dist/
-build/
-*.egg-info/
+# Cloudflare
+.cloudflared/
