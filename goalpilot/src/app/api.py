@@ -5,13 +5,19 @@ Provides HTTP endpoints for AI-powered financial planning
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uvicorn
 
 from src.models.agent import goal_planning_graph
 from src.utils.logger import logger
 from src.utils.config import settings
 from src.monitoring.metrics_tracker import metrics
+
+# Metrics tracking variables
+successful_plans = 0
+failed_plans = 0
+quality_scores: list = []
+app_start_time = datetime.now(timezone.utc)
 
 # ============================================================================
 # FastAPI App
@@ -33,7 +39,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    global app_start_time
+    app_start_time = datetime.now(timezone.utc)
+    logger.info("Starting GoalPilot API on port 8000...")
 
 
 # ============================================================================
@@ -105,15 +116,62 @@ async def health_check():
 
 @app.get("/metrics")
 async def get_metrics():
-    """
-    Get current API performance metrics
-    Returns success rate, total requests, and quality scores
-    """
-    metrics_data = metrics.get_metrics()
-    return {
-        "status": "success",
-        "metrics": metrics_data
-    }
+    """Get API usage metrics and OKR progress"""
+    try:
+        from fastapi.responses import JSONResponse
+        
+        total_requests = successful_plans + failed_plans
+        success_rate = (successful_plans / total_requests * 100) if total_requests > 0 else 0
+        avg_quality = (sum(quality_scores) / len(quality_scores)) if quality_scores else 0
+        
+        goal_total = 100
+        progress_percent = round(min(successful_plans / goal_total * 100, 100), 1)
+        
+        response_data = {
+            "status": "success",
+            "metrics": {
+                "total_requests": total_requests,
+                "successful_plans": successful_plans,
+                "failed_plans": failed_plans,
+                "success_rate_percent": round(success_rate, 2),
+                "average_quality_score": round(avg_quality, 2),
+                "uptime_since": (app_start_time or datetime.now(timezone.utc)).isoformat(),
+            },
+            "okr_dashboard": {
+                "goal": "Generate 100 successful financial plans",
+                "current_progress": successful_plans,
+                "progress_percent": progress_percent,
+                "quality_target": 0.8,
+                "quality_actual": round(avg_quality, 2),
+                "status": "on_track" if success_rate > 90 and total_requests > 0 else "needs_attention"
+            }
+        }
+        
+        return JSONResponse(content=response_data, status_code=200)
+        
+    except Exception as e:
+        logger.error(f"Metrics endpoint error: {e}")
+        error_response = {
+            "status": "error",
+            "error": str(e),
+            "metrics": {
+                "total_requests": 0,
+                "successful_plans": 0,
+                "failed_plans": 0,
+                "success_rate_percent": 0,
+                "average_quality_score": 0,
+                "uptime_since": datetime.now(timezone.utc).isoformat(),
+            },
+            "okr_dashboard": {
+                "goal": "Generate 100 successful financial plans",
+                "current_progress": 0,
+                "progress_percent": 0,
+                "quality_target": 0.8,
+                "quality_actual": 0,
+                "status": "needs_attention"
+            }
+        }
+        return JSONResponse(content=error_response, status_code=500)
 
 @app.post("/plan", response_model=PlanResponse)
 async def generate_plan(request: PlanRequest):
@@ -129,6 +187,8 @@ async def generate_plan(request: PlanRequest):
     Raises:
         HTTPException: If plan generation fails
     """
+    global successful_plans, failed_plans, quality_scores  # THIS LINE MUST BE HERE
+    
     logger.info(f"Plan requested: {request.goal[:50]}...")
     
     try:
@@ -175,22 +235,37 @@ async def generate_plan(request: PlanRequest):
         eval_score = result.get("confidence_score", 1.0)
         metrics.record_request(success=True, eval_score=eval_score)
         
-        return PlanResponse(
-            goal=result['goal'],
-            goal_type=result['goal_type'],
-            summary=result['summary'],
-            plan_steps=plan_steps,
-            api_data=result['api_data'],
-            confidence_score=result['confidence_score'],
-            eval_pass=result['eval_pass'],
-            timestamp=datetime.utcnow().isoformat()
-        )
+        # Track success metrics
+        try:
+            global successful_plans, failed_plans, quality_scores
+            successful_plans += 1
+            conf = result.get("confidence_score", 0)
+            if conf and isinstance(conf, (int, float)) and conf > 0:
+                quality_scores.append(float(conf))
+            logger.info(f"Metrics updated: {successful_plans} successful")
+        except Exception as e:
+            logger.error(f"Failed to update metrics: {e}")
+        
+        # Ensure timestamp is included
+        if 'timestamp' not in result:
+            result['timestamp'] = datetime.now(timezone.utc).isoformat()
+        
+        return PlanResponse(**result)
         
     except HTTPException:
+        # Track failure for HTTP exceptions
+        try:
+            failed_plans += 1
+        except:
+            pass
         raise
+        
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
-        metrics.record_request(success=False)
+        try:
+            failed_plans += 1
+        except:
+            pass
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/examples", response_model=List[Dict[str, str]])
