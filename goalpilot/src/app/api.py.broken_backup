@@ -1,0 +1,257 @@
+"""
+FastAPI application for GoalPilot
+Provides HTTP endpoints for AI-powered financial planning
+"""
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+import uvicorn
+
+from src.models.agent import goal_planning_graph
+from src.utils.logger import logger
+from src.utils.config import settings
+from src.monitoring.metrics_tracker import metrics
+
+# ============================================================================
+# FastAPI App
+# ============================================================================
+
+app = FastAPI(
+    title="GoalPilot API",
+    description="AI-powered financial planning assistant",
+    version="1.0.0"
+)
+
+# Add CORS middleware
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+
+
+# ============================================================================
+# Request/Response Models
+# ============================================================================
+
+class PlanRequest(BaseModel):
+    """Request to generate a financial plan"""
+    goal: str = Field(..., description="User's financial goal", min_length=10, max_length=500)
+    user_profile: str = Field(default="novice", description="User expertise level: novice, diy, near-retiree")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "goal": "I want to retire comfortably in 20 years",
+                "user_profile": "novice"
+            }
+        }
+
+class PlanStep(BaseModel):
+    """A single step in the financial plan"""
+    step_number: int
+    title: str
+    description: str
+    estimated_duration: str
+    resources_needed: List[str] = []
+
+class PlanResponse(BaseModel):
+    """Response containing the generated plan"""
+    goal: str
+    goal_type: str
+    summary: str
+    plan_steps: List[PlanStep]
+    api_data: Dict[str, Any]
+    confidence_score: float
+    eval_pass: bool
+    timestamp: str
+    
+class HealthResponse(BaseModel):
+    """Health check response"""
+    status: str
+    timestamp: str
+    version: str
+    bedrock_model: str
+
+# ============================================================================
+# Endpoints
+# ============================================================================
+
+@app.get("/", response_model=Dict[str, str])
+async def root():
+    """Root endpoint with API info"""
+    return {
+        "message": "GoalPilot API",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint"""
+    logger.info("Health check requested")
+    return HealthResponse(
+        status="healthy",
+        timestamp=datetime.utcnow().isoformat(),
+        version="1.0.0",
+        bedrock_model=settings.bedrock_model
+    )
+
+@app.get("/metrics")
+async def get_metrics():
+    """
+    Get current API performance metrics
+    Returns success rate, total requests, and quality scores
+    """
+    metrics_data = metrics.get_metrics()
+    return {
+        "status": "success",
+        "metrics": metrics_data
+    }
+
+@app.post("/plan", response_model=PlanResponse)
+async def generate_plan(request: PlanRequest):
+    """
+    Generate a financial plan using the AI agent
+    
+    Args:
+        request: PlanRequest with goal and user profile
+        
+    Returns:
+        PlanResponse with generated plan
+        
+    Raises:
+        HTTPException: If plan generation fails
+    """
+    logger.info(f"Plan requested: {request.goal[:50]}...")
+    
+        try:
+            initial_state = {
+            "goal": request.goal,
+            "user_profile": request.user_profile,
+            "analysis": "",
+            "goal_type": "",
+            "tool_calls": [],
+            "api_data": {},
+            "plan_steps": [],
+            "summary": "",
+            "confidence_score": 0.0,
+            "eval_pass": False,
+            "error": ""
+            }
+        
+            # Run the agent
+            logger.info("Invoking LangGraph agent...")
+            initial_state = {
+            "goal": request.goal,
+            "user_profile": request.user_profile,
+            "goal_type": "general",
+            "analysis": "",
+            "tool_calls": [],
+            "api_data": {},
+            "plan_steps": [],
+            "summary": "",
+            "confidence_score": 0.0,
+            "eval_pass": False,
+            "error": ""
+            }
+            result = goal_planning_graph.invoke(initial_state)
+
+            # Check for errors
+            if result.get("error"):
+                logger.error(f"Agent error: {result['error']}")
+                raise HTTPException(status_code=500, detail=f"Plan generation failed: {result['error']}")
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}", exc_info=True)
+            metrics.record_request(success=False)
+            raise HTTPException(status_code=500, detail=str(e))
+
+        
+            # Check for errors
+            if result.get('error'):
+            logger.error(f"Agent error: {result['error']}")
+            raise HTTPException(status_code=500, detail=f"Plan generation failed: {result['error']}")
+        
+            # Validate plan quality
+            if not result['eval_pass']:
+            logger.warning(f"Plan failed evaluation (score: {result['confidence_score']:.2f})")
+            raise HTTPException(
+                status_code=422, 
+                detail=f"Generated plan did not meet quality standards (confidence: {result['confidence_score']:.2f})"
+            )
+        
+            # Convert plan steps to Pydantic models
+            plan_steps = [
+            PlanStep(
+                step_number=step['step_number'],
+                title=step['title'],
+                description=step['description'],
+                estimated_duration=step.get('estimated_duration', 'TBD'),
+                resources_needed=step.get('resources_needed', [])
+            )
+            for step in result['plan_steps']
+            ]
+        
+            logger.success(f"Plan generated: {len(plan_steps)} steps, confidence {result['confidence_score']:.2f}")
+        
+            # Record successful plan
+            eval_score = result.get("confidence_score", 1.0)
+            metrics.record_request(success=True, eval_score=eval_score)
+
+            return PlanResponse(
+            goal=result['goal'],
+            goal_type=result['goal_type'],
+            summary=result['summary'],
+            plan_steps=plan_steps,
+            api_data=result['api_data'],
+            confidence_score=result['confidence_score'],
+            eval_pass=result['eval_pass'],
+            timestamp=datetime.utcnow().isoformat()
+            )
+        
+    except HTTPException:
+            raise
+    except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/examples", response_model=List[Dict[str, str]])
+async def get_examples():
+    """Get example goals for testing"""
+    return [
+        {
+            "goal": "I want to retire comfortably in 20 years",
+            "user_profile": "novice",
+            "description": "Retirement planning for a beginner"
+        },
+        {
+            "goal": "I need to save for a down payment on a $500k house in 5 years",
+            "user_profile": "diy",
+            "description": "Home purchase planning"
+        },
+        {
+            "goal": "I want to save for my child's college education starting in 18 years",
+            "user_profile": "near-retiree",
+            "description": "College savings planning"
+        }
+    ]
+
+# ============================================================================
+# Main
+# ============================================================================
+
+if __name__ == "__main__":
+    logger.info(f"Starting GoalPilot API on port {settings.api_port}...")
+    uvicorn.run(
+        "src.app.api:app",
+        host="0.0.0.0",
+        port=settings.api_port,
+        reload=True
+    )
