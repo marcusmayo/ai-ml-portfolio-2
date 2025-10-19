@@ -1,0 +1,643 @@
+"""
+GoalPilot - Vanguard Professional Edition
+Final version with correct step parsing and styling
+"""
+import streamlit as st
+import requests
+from datetime import datetime
+import json
+from typing import Dict, Any, List
+import re
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
+API_URL = "http://localhost:8000"
+
+st.set_page_config(
+    page_title="GoalPilot - AI Financial Planning",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ============================================================================
+# Vanguard Corporate Brand Colors
+# ============================================================================
+
+VANGUARD_RED = "#9A0715"
+VANGUARD_DARK_TEXT = "#1F1F1F"
+VANGUARD_WHITE_TEXT = "#FFFFFF"
+VANGUARD_LIGHT_BG = "#F8F8F8"
+VANGUARD_MED_GRAY = "#6C6C6C"
+VANGUARD_SUCCESS_GREEN = "#2E7D32"
+
+# ============================================================================
+# Production CSS - Final Polish
+# ============================================================================
+
+st.markdown(f"""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Merriweather:wght@700&display=swap');
+    
+    /* ========== REMOVE BLACK HEADER ========== */
+    header[data-testid="stHeader"] {{
+        background-color: transparent !important;
+        display: none !important;
+    }}
+    
+    .stApp header {{
+        display: none !important;
+    }}
+    
+    .main .block-container {{
+        padding-top: 1.5rem !important;
+    }}
+    
+    /* ========== GLOBAL ========== */
+    .stApp {{
+        background-color: #FFFFFF;
+        font-family: 'Open Sans', sans-serif;
+    }}
+    
+    .stApp, .stApp p, .stApp div, .stApp span, .stApp label {{
+        color: {VANGUARD_DARK_TEXT} !important;
+    }}
+    
+    /* ========== HEADERS ========== */
+    h1, h2, h3, h4, h5, h6 {{
+        color: {VANGUARD_RED} !important;
+        font-family: 'Merriweather', serif !important;
+        font-weight: 700 !important;
+    }}
+    
+    .main-header {{
+        font-size: 3.5rem !important;
+        color: {VANGUARD_RED} !important;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }}
+    
+    .sub-header {{
+        font-size: 1.3rem !important;
+        color: {VANGUARD_MED_GRAY} !important;
+        text-align: center;
+        margin-bottom: 1rem !important;
+    }}
+    
+    /* ========== REDUCE SPACING ========== */
+    .stButton {{
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }}
+    
+    .element-container {{
+        margin-bottom: 0.3rem !important;
+    }}
+    
+    div[data-testid="column"] {{
+        padding-bottom: 0 !important;
+    }}
+    
+    /* ========== INPUT FIELDS ========== */
+    .stTextArea textarea {{
+        background-color: #FFFFFF !important;
+        color: {VANGUARD_DARK_TEXT} !important;
+        font-size: 1.05rem !important;
+        border: 2px solid {VANGUARD_MED_GRAY} !important;
+        border-radius: 6px !important;
+        padding: 12px !important;
+    }}
+    
+    .stTextArea textarea:focus {{
+        border-color: {VANGUARD_RED} !important;
+        box-shadow: 0 0 0 2px rgba(154, 7, 21, 0.1) !important;
+    }}
+    
+    .stTextArea textarea::placeholder {{
+        color: {VANGUARD_MED_GRAY} !important;
+        opacity: 0.7 !important;
+    }}
+    
+    .stTextArea label, .stSelectbox label {{
+        color: {VANGUARD_DARK_TEXT} !important;
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+    }}
+    
+    /* ========== SELECT BOX ========== */
+    .stSelectbox > div > div {{
+        background-color: #FFFFFF !important;
+        color: {VANGUARD_DARK_TEXT} !important;
+        border: 2px solid {VANGUARD_MED_GRAY} !important;
+        font-weight: 600 !important;
+    }}
+    
+    /* ========== PRIMARY BUTTON - WHITE TEXT ON RED ========== */
+    .stButton > button[kind="primary"],
+    .stButton > button {{
+        background: linear-gradient(135deg, {VANGUARD_RED} 0%, #7A0510 100%) !important;
+        color: {VANGUARD_WHITE_TEXT} !important;
+        font-weight: 700 !important;
+        font-size: 1.2rem !important;
+        padding: 0.8rem 2.5rem !important;
+        border: none !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 8px rgba(154, 7, 21, 0.3) !important;
+    }}
+    
+    .stButton > button:hover {{
+        background: linear-gradient(135deg, #7A0510 0%, {VANGUARD_RED} 100%) !important;
+        box-shadow: 0 4px 12px rgba(154, 7, 21, 0.4) !important;
+        transform: translateY(-2px) !important;
+    }}
+    
+    /* Force white text in button */
+    .stButton > button *, .stButton > button span, .stButton > button p {{
+        color: {VANGUARD_WHITE_TEXT} !important;
+    }}
+    
+    /* ========== DOWNLOAD BUTTON - WHITE TEXT ON DARK ========== */
+    .stDownloadButton > button {{
+        background: linear-gradient(135deg, #2C2C2C 0%, #1A1A1A 100%) !important;
+        color: {VANGUARD_WHITE_TEXT} !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+        padding: 0.8rem 2rem !important;
+        border: none !important;
+        border-radius: 6px !important;
+    }}
+    
+    .stDownloadButton > button:hover {{
+        background: linear-gradient(135deg, #1A1A1A 0%, #000000 100%) !important;
+        transform: translateY(-2px) !important;
+    }}
+    
+    .stDownloadButton > button *, .stDownloadButton > button span {{
+        color: {VANGUARD_WHITE_TEXT} !important;
+    }}
+    
+    /* ========== SIDEBAR ========== */
+    [data-testid="stSidebar"] {{
+        background-color: {VANGUARD_LIGHT_BG};
+        border-right: 3px solid {VANGUARD_RED};
+    }}
+    
+    [data-testid="stSidebar"] * {{
+        color: {VANGUARD_DARK_TEXT} !important;
+    }}
+    
+    .vanguard-logo {{
+        background: linear-gradient(135deg, {VANGUARD_RED} 0%, #7A0510 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(154, 7, 21, 0.3);
+    }}
+    
+    .vanguard-logo h2, .vanguard-logo p {{
+        color: {VANGUARD_WHITE_TEXT} !important;
+    }}
+    
+    /* ========== SUCCESS BOX ========== */
+    .success-box {{
+        background-color: #F0F7F0;
+        border: 3px solid {VANGUARD_SUCCESS_GREEN};
+        border-radius: 10px;
+        padding: 2rem;
+        margin: 1rem 0;
+    }}
+    
+    .success-box h3 {{
+        color: {VANGUARD_SUCCESS_GREEN} !important;
+    }}
+    
+    .success-box * {{
+        color: {VANGUARD_DARK_TEXT} !important;
+    }}
+    
+    /* ========== METRICS ========== */
+    .metric-container {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }}
+    
+    .metric-card {{
+        background-color: #FFFFFF;
+        border: 3px solid {VANGUARD_RED};
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+    }}
+    
+    .metric-label {{
+        font-size: 0.95rem !important;
+        color: {VANGUARD_RED} !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.8rem;
+        display: block;
+    }}
+    
+    .metric-value {{
+        font-size: 2.5rem !important;
+        color: {VANGUARD_DARK_TEXT} !important;
+        font-weight: 700 !important;
+        font-family: 'Merriweather', serif !important;
+        display: block;
+    }}
+    
+    /* ========== STEP CARDS ========== */
+    .action-steps-header {{
+        font-size: 1.8rem !important;
+        color: {VANGUARD_RED} !important;
+        font-weight: 700 !important;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }}
+    
+    .step-card {{
+        background-color: #FFFFFF;
+        border: 2px solid {VANGUARD_LIGHT_BG};
+        border-left: 5px solid {VANGUARD_RED};
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }}
+    
+    .step-header {{
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }}
+    
+    .step-number {{
+        background-color: {VANGUARD_RED};
+        color: {VANGUARD_WHITE_TEXT} !important;
+        font-weight: 700;
+        padding: 0.5rem 0.9rem;
+        border-radius: 50%;
+        margin-right: 1rem;
+        font-size: 1.2rem;
+        line-height: 1;
+        min-width: 45px;
+        text-align: center;
+        flex-shrink: 0;
+    }}
+    
+    .step-title {{
+        font-size: 1.25rem !important;
+        color: {VANGUARD_DARK_TEXT} !important;
+        font-weight: 700 !important;
+        line-height: 1.4;
+        flex: 1;
+    }}
+    
+    .step-content {{
+        padding-left: 4rem;
+    }}
+    
+    .step-description {{
+        color: {VANGUARD_DARK_TEXT} !important;
+        font-size: 1rem !important;
+        line-height: 1.7;
+        margin-bottom: 1rem;
+    }}
+    
+    .step-meta {{
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid {VANGUARD_LIGHT_BG};
+    }}
+    
+    .step-meta-item {{
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: {VANGUARD_MED_GRAY} !important;
+        font-size: 0.9rem;
+    }}
+    
+    /* ========== EXPANDER ========== */
+    .streamlit-expanderHeader {{
+        background-color: {VANGUARD_LIGHT_BG} !important;
+        color: {VANGUARD_DARK_TEXT} !important;
+        font-weight: 600 !important;
+    }}
+    
+    /* ========== FOOTER ========== */
+    footer {{
+        visibility: hidden;
+    }}
+    
+    .custom-footer {{
+        margin-top: 3rem;
+        padding: 1.5rem 0;
+        border-top: 2px solid {VANGUARD_LIGHT_BG};
+        text-align: center;
+    }}
+    
+    .custom-footer p {{
+        color: {VANGUARD_MED_GRAY} !important;
+        font-size: 0.9rem;
+        margin: 0.2rem 0;
+    }}
+    
+    /* ========== ALERTS ========== */
+    .stAlert {{
+        border-radius: 6px !important;
+    }}
+    
+    @media (max-width: 768px) {{
+        .metric-container {{
+            grid-template-columns: 1fr;
+        }}
+    }}
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+def check_api_health() -> bool:
+    """Check if FastAPI backend is running"""
+    try:
+        response = requests.get(f"{API_URL}/health", timeout=2)
+        return response.status_code == 200
+    except:
+        return False
+
+def call_api(endpoint: str, method: str = "GET", data: Dict = None) -> Dict[str, Any]:
+    """Call the GoalPilot API"""
+    url = f"{API_URL}{endpoint}"
+    try:
+        if method == "GET":
+            response = requests.get(url, timeout=90)
+        elif method == "POST":
+            response = requests.post(url, json=data, timeout=90)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.Timeout:
+        st.error("⏱️ Request timed out. Please try again.")
+        return None
+    except requests.exceptions.ConnectionError:
+        st.error("🔌 Cannot connect to API. Start it with: `python -m src.app.api`")
+        return None
+    except requests.exceptions.HTTPError as e:
+        st.error(f"❌ API Error: {e.response.status_code}")
+        return None
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+        return None
+
+def parse_steps_from_text(text: str) -> List[Dict[str, str]]:
+    """Parse action steps from formatted text"""
+    steps = []
+    
+    # Split by step numbers (1., 2., etc.)
+    step_pattern = r'(\d+)\.\s*\*\*([^*]+)\*\*\s*-\s*Description:\s*([^-]+?)\s*-\s*Timeline:\s*([^-]+?)\s*-\s*Resources:\s*(.+?)(?=\d+\.\s*\*\*|$)'
+    matches = re.findall(step_pattern, text, re.DOTALL)
+    
+    for match in matches:
+        step_num, title, desc, timeline, resources = match
+        steps.append({
+            'action': title.strip(),
+            'details': desc.strip(),
+            'timeline': timeline.strip(),
+            'resources': resources.strip()
+        })
+    
+    return steps
+
+def display_plan(plan_data: Dict[str, Any]):
+    """Display the complete financial plan"""
+    
+    # Success banner
+    st.markdown("<div class='success-box'>", unsafe_allow_html=True)
+    st.markdown("### ✅ Plan Generated Successfully!")
+    st.markdown(f"**Goal Type:** {plan_data.get('goal_type', 'Retirement')}")
+    st.markdown(f"**Summary:** {plan_data.get('summary', 'Your personalized plan is ready.')}")
+    st.markdown(f"**Confidence:** {plan_data.get('confidence', 100)}%")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Key Metrics in 3-column grid
+    steps = plan_data.get('steps', [])
+    sources = plan_data.get('data_sources', [])
+    quality = plan_data.get('quality', 'Good')
+    
+    metric_html = f"""
+    <div class='metric-container'>
+        <div class='metric-card'>
+            <span class='metric-label'>PLAN STEPS</span>
+            <span class='metric-value'>{len(steps)}</span>
+        </div>
+        <div class='metric-card'>
+            <span class='metric-label'>DATA SOURCES</span>
+            <span class='metric-value'>{len(sources)}</span>
+        </div>
+        <div class='metric-card'>
+            <span class='metric-label'>PLAN QUALITY</span>
+            <span class='metric-value' style='font-size: 1.8rem !important;'>{quality}</span>
+        </div>
+    </div>
+    """
+    st.markdown(metric_html, unsafe_allow_html=True)
+    
+    # Action Steps Section
+    if steps:
+        st.markdown("<h2 class='action-steps-header'>📋 Financial Analysis</h2>", unsafe_allow_html=True)
+        
+        for i, step in enumerate(steps, 1):
+            # Handle different step formats
+            if isinstance(step, dict):
+                action = step.get('action', step.get('title', f'Step {i}'))
+                details = step.get('details', step.get('description', ''))
+                timeline = step.get('timeline', '')
+                resources = step.get('resources', '')
+            else:
+                # If step is a string, try to parse it
+                action = f"Step {i}"
+                details = str(step)
+                timeline = ""
+                resources = ""
+            
+            # Build step card HTML
+            step_html = f"""
+            <div class='step-card'>
+                <div class='step-header'>
+                    <span class='step-number'>{i}</span>
+                    <span class='step-title'>{action}</span>
+                </div>
+                <div class='step-content'>
+                    <div class='step-description'>{details}</div>
+            """
+            
+            # Add metadata if available
+            if timeline or resources:
+                step_html += "<div class='step-meta'>"
+                if timeline:
+                    step_html += f"<div class='step-meta-item'>⏱️ <strong>Duration:</strong> {timeline}</div>"
+                if resources:
+                    step_html += f"<div class='step-meta-item'>🔧 <strong>Resources:</strong> {resources}</div>"
+                step_html += "</div>"
+            
+            step_html += "</div></div>"
+            st.markdown(step_html, unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ No action steps were generated. Try regenerating the plan.")
+    
+    # Data Sources
+    if sources:
+        with st.expander("📚 Data Sources Used", expanded=False):
+            for source in sources:
+                st.markdown(f"- {source}")
+    
+    # Quality indicator
+    quality_colors = {
+        'Excellent': '#2E7D32',
+        'Good': '#1976D2',
+        'Fair': '#F57C00',
+        'Poor': '#D32F2F'
+    }
+    quality_color = quality_colors.get(quality, '#1976D2')
+    
+    st.markdown(f"""
+    <div style='background-color: {VANGUARD_LIGHT_BG}; padding: 1rem; border-radius: 6px; 
+                border-left: 4px solid {quality_color}; margin-top: 1.5rem;'>
+        <strong style='color: {VANGUARD_DARK_TEXT};'>Plan Quality Assessment:</strong> 
+        <span style='color: {quality_color}; font-weight: 700;'>{quality}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+def load_example(goal: str, profile: str):
+    """Load example goal"""
+    st.session_state['goal_input'] = goal
+    st.session_state['profile_input'] = profile
+
+# ============================================================================
+# Main App
+# ============================================================================
+
+def main():
+    """Main application"""
+    
+    # Header
+    st.markdown("<h1 class='main-header'>🎯 GoalPilot</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-header'>AI-Powered Financial Planning with Claude 3.5 Sonnet</p>", unsafe_allow_html=True)
+    
+    # Sidebar
+    with st.sidebar:
+        st.markdown("""
+        <div class='vanguard-logo'>
+            <h2>🎯 GoalPilot</h2>
+            <p>Intelligent Financial Planning</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("### 🚀 Quick Start")
+        st.markdown("""
+        <div style='background-color: white; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;'>
+            <p style='margin: 0; color: #1F1F1F; font-size: 0.95rem; line-height: 1.6;'>
+            1. Enter your financial goal<br>
+            2. Select experience level<br>
+            3. Click Generate Plan<br>
+            4. Review your roadmap
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("### 💡 Example Goals")
+        
+        examples = [
+            ("I want to retire comfortably in 20 years", "novice"),
+            ("I need to save for a $500K house", "diy"),
+            ("Save for child's college in 10 years", "novice"),
+            ("Build $1M retirement portfolio", "near-retiree")
+        ]
+        
+        for goal, profile in examples:
+            if st.button(f"📌 {goal[:35]}...", key=f"ex_{hash(goal)}", use_container_width=True):
+                load_example(goal, profile)
+                st.rerun()
+        
+        st.markdown("---")
+        api_status = check_api_health()
+        status_color = "#2E7D32" if api_status else "#D32F2F"
+        status_text = "✅ API Connected" if api_status else "❌ API Offline"
+        
+        st.markdown(f"""
+        <div style='background-color: {VANGUARD_LIGHT_BG}; padding: 0.8rem; border-radius: 6px; 
+                    text-align: center; border: 2px solid {status_color};'>
+            <strong style='color: {status_color};'>{status_text}</strong>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Main input
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        goal_input = st.text_area(
+            "💰 Describe Your Financial Goal",
+            value=st.session_state.get('goal_input', ''),
+            height=120,
+            placeholder="Example: I want to retire comfortably in 20 years...",
+            help="Be specific about timeline and goals"
+        )
+    
+    with col2:
+        profile_input = st.selectbox(
+            "👤 Experience Level",
+            options=["novice", "diy", "near-retiree"],
+            index=["novice", "diy", "near-retiree"].index(st.session_state.get('profile_input', 'novice'))
+        )
+    
+    # Generate button - REDUCED SPACING
+    if st.button("✨ Generate My Plan", type="primary", use_container_width=True):
+        if not goal_input or len(goal_input) < 10:
+            st.error("❌ Please enter a goal (at least 10 characters)")
+        elif not check_api_health():
+            st.error("❌ API not running. Start with: `python -m src.app.api`")
+        else:
+            with st.spinner("🤖 Generating your personalized plan..."):
+                plan_data = call_api("/plan", "POST", {"goal": goal_input, "user_profile": profile_input})
+                if plan_data:
+                    st.session_state.last_plan = plan_data
+                    st.balloons()
+                    st.rerun()
+    
+    # Display plan
+    if 'last_plan' in st.session_state:
+        st.markdown("---")
+        display_plan(st.session_state.last_plan)
+        
+        # Download button
+        plan_json = json.dumps(st.session_state.last_plan, indent=2)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        st.download_button(
+            label="📥 Download Plan as JSON",
+            data=plan_json,
+            file_name=f"goalpilot_plan_{timestamp}.json",
+            mime="application/json",
+            use_container_width=True
+        )
+    
+    # Footer
+    st.markdown("""
+    <div class='custom-footer'>
+        <p><strong>GoalPilot</strong> - AI-Powered Financial Planning</p>
+        <p>Powered by Claude 3.5 Sonnet | Built with Streamlit and FastAPI</p>
+        <p>© 2024 | For demonstration purposes</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
