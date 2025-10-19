@@ -3,6 +3,7 @@ version: '3.8'
 services:
   api:
     build: .
+    container_name: goalpilot-api
     ports:
       - "8000:8000"
     environment:
@@ -17,4 +18,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+    networks:
+      - goalpilot-network
+
+networks:
+  goalpilot-network:
+    driver: bridge
