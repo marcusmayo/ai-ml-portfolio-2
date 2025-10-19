@@ -1,8 +1,52 @@
-interview-predictor/.bucket_name
-interview-predictor/.function_url
-interview-predictor/.rebuild_trigger
-venv/
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Environment variables - NEVER COMMIT
+.env
+*.env
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+/tmp/
+logs/
+nohup.out
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Backups - LOCAL ONLY
+backups/
+*.backup*
+*.bak
+
+# Data
+*.csv
+*.xlsx
+*.db
+*.sqlite
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build
+dist/
+build/
+*.egg-info/
