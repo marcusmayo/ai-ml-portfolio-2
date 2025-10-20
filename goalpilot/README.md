@@ -26,28 +26,34 @@ GoalPilot represents a **strategic engineering solution** for digital financial 
 ### 🎭 **Professional Financial Planning Interface**
 Transform natural language financial goals into detailed 15-step action plans through intelligent multi-agent orchestration optimized for personalized guidance.
 
-![GoalPilot Hero Interface](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/goalpilot/screenshots/heroshot.png)
+![GoalPilot Hero Interface](https://github.com/marcusmayo/ai-ml-portfolio-2/blob/44f0c01363177888fc3ef351b66c7d693bdbe4e9/goalpilot/screenshots/hero-shot.png)
+
 *Professional financial planning assistant with experience-level personalization and real-time plan generation*
 
-![Financial Plan Input Form](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/goalpilot/screenshots/inputform.png)
+![Financial Plan Input Form](https://github.com/marcusmayo/ai-ml-portfolio-2/blob/44f0c01363177888fc3ef351b66c7d693bdbe4e9/goalpilot/screenshots/input-form.png)
+
 *Intuitive goal input interface with user experience profiling and natural language processing*
 
 ### 🔍 **AI-Generated Action Plans**
 Advanced LangGraph agent workflow delivering contextually relevant financial guidance with professional formatting suitable for user decision-making.
 
-![Generated Financial Plan](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/goalpilot/screenshots/generatedplan.png)
+![Generated Financial Plan](https://github.com/marcusmayo/ai-ml-portfolio-2/blob/main/goalpilot/screenshots/generated-plan.png)
+
 *15-step financial plan with timeline guidance, resource recommendations, and confidence scoring*
 
 ### ⚙️ **Enterprise Performance Monitoring**
 Production observability system demonstrating real-time OKR tracking, success metrics, and system health monitoring across multiple performance dimensions.
 
-![OKR Performance Dashboard](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/goalpilot/screenshots/OKRdashboard.png)
+![OKR Performance Dashboard](https://github.com/marcusmayo/ai-ml-portfolio-2/blob/44f0c01363177888fc3ef351b66c7d693bdbe4e9/goalpilot/screenshots/OKR-dashboard.png)
+
 *Real-time metrics dashboard: 100% success rate, quality scoring, system status, and progress tracking*
 
-![API Metrics Endpoint](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/goalpilot/screenshots/endpoints.png)
+![API Metrics Endpoint](https://github.com/marcusmayo/ai-ml-portfolio-2/blob/main/goalpilot/screenshots/endpoints.png)
+
 *RESTful API metrics with structured JSON responses for enterprise integration*
 
-![LangGraph Agent Workflow](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/goalpilot/screenshots/langgraphagent.png)
+![LangGraph Agent Workflow](https://github.com/marcusmayo/ai-ml-portfolio-2/blob/44f0c01363177888fc3ef351b66c7d693bdbe4e9/goalpilot/screenshots/langgraph-agent.png)
+
 *Multi-agent orchestration: Planner → Router → Generator → Evaluator workflow with state management*
 
 ---
@@ -156,7 +162,8 @@ graph TB
 ### **🏭 Production Deployment Architecture**
 Enterprise-grade FastAPI backend demonstrating scalable deployment patterns with Docker containerization and health monitoring capabilities.
 
-![Production Metrics Validation](https://github.com/marcusmayo/ai-ml-portfolio-2/tree/main/goalpilot/screenshots/metrics.png)
+![Production Metrics Validation](https://github.com/marcusmayo/ai-ml-portfolio-2/blob/44f0c01363177888fc3ef351b66c7d693bdbe4e9/goalpilot/screenshots/metrics.png)
+
 *Live production metrics showing 100% success rate across multiple plan generation cycles*
 
 ### **🧪 Comprehensive Agent Testing Pipeline**
