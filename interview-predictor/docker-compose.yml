@@ -1,13 +1,22 @@
-version: '3.3'
+version: '3.8'
 
 services:
   interview-predictor:
     build: .
-    container_name: interview-predictor
     ports:
       - "8080:8080"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - ./uploads:/app/uploads
+      - ./data/uploads:/app/data/uploads
+      - ./models/cache:/app/models/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     restart: unless-stopped
+
+# To run: docker-compose up --build

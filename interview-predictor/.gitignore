@@ -8,30 +8,41 @@ venv/
 env/
 ENV/
 
-# Uploads
-uploads/
-*.mp3
-*.wav
-*.m4a
-*.ogg
-
-# Environment variables
+# Environment
 .env
-.env.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+
+# Data
+data/uploads/*
+data/raw/*
+!data/uploads/.gitkeep
+!data/raw/.gitkeep
+*.mp3
+*.wav
+*.mp4
+*.m4a
+*.ogg
+
+# Models
+models/cache/*
+!models/cache/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Temp files
+/tmp/
+*.tmp
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Models (downloaded at runtime)
-*.pt
-*.bin
-models/
-
-# Logs
-*.log
+# Backups
+backup-*/

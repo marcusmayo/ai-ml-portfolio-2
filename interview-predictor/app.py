@@ -109,14 +109,13 @@ async def analyze_audio(
             temp_file = temp.name
         
         # Initialize processors
-        asr = ASRProcessor(model_size=model_size)
+        asr = ASRProcessor()
         nlp = NLPAnalyzer()
         scorer = EnsembleScorer()
         timeline_analyzer = TimelineAnalyzer()
         
         # Transcribe
-        asr.load_model()
-        transcription = asr.transcribe_audio(temp_file)
+        transcription = asr.transcribe_audio(temp_file, model_name=model_size)
         transcript_text = transcription["text"]
         segments = transcription.get("segments", [])
         duration = transcription.get("duration", 0)

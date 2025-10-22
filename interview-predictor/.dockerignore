@@ -8,7 +8,7 @@ venv/
 env/
 ENV/
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -18,21 +18,19 @@ ENV/
 .git/
 .gitignore
 
-# Uploads (will be created at runtime)
-uploads/
+# Data
+data/uploads/*
+data/raw/*
+*.mp3
+*.wav
+*.mp4
 
-# Docs
-README.md
-docs/
+# Logs
+*.log
 
-# Tests
-tests/
-*.test.py
+# Models cache
+models/cache/*
 
-# Environment files
-.env
-.env.local
-
-# OS
-.DS_Store
-Thumbs.db
+# Temp files
+/tmp/
+*.tmp

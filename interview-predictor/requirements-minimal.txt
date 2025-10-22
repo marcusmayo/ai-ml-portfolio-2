@@ -1,0 +1,22 @@
+# Core Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+
+# ML/AI - PyTorch (CUDA 12.8)
+torch==2.8.0
+torchaudio==2.8.0
+torchvision==0.23.0
+
+# Speech Recognition
+whisperx==3.7.4
+faster-whisper==1.2.0
+
+# NLP
+transformers>=4.48.0
+
+# Google AI
+google-generativeai==0.8.3
+
+# Utilities
+python-dotenv==1.0.1
