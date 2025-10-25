@@ -2,14 +2,17 @@ version: '3.8'
 
 services:
   interview-predictor:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - ./data/uploads:/app/data/uploads
-      - ./models/cache:/app/models/cache
+      - ./uploads:/app/uploads
+      - ./models:/app/models
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    restart: unless-stopped
     deploy:
       resources:
         reservations:
@@ -17,6 +20,3 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    restart: unless-stopped
-
-# To run: docker-compose up --build

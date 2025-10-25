@@ -1,5 +1,6 @@
-# Use Python 3.12 slim as base (matches your environment)
-FROM python:3.12-slim
+FROM python:3.11-slim
+
+WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -8,29 +9,44 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
+# Install PyTorch 2.8.0 (CUDA 12.8) - WORKING VERSION
+RUN pip install --no-cache-dir \
+    torch==2.8.0 \
+    torchaudio==2.8.0 \
+    torchvision==0.23.0 \
+    --index-url https://download.pytorch.org/whl/cu128
 
-# Copy requirements first (for Docker layer caching)
-COPY requirements-minimal.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install NumPy 2.0.x (WhisperX requirement)
+RUN pip install --no-cache-dir 'numpy>=2.0.2,<2.1.0'
 
-# Copy application code
-COPY . .
+# Install transformers >=4.48.0
+RUN pip install --no-cache-dir 'transformers>=4.48.0' tokenizers sentencepiece
 
-# Create necessary directories
-RUN mkdir -p /tmp/uploads data/uploads models/cache
+# Install WhisperX and dependencies
+RUN pip install --no-cache-dir whisperx faster-whisper
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
+# Install ML libraries
+RUN pip install --no-cache-dir scipy pandas scikit-learn accelerate
+
+# Install audio libraries
+RUN pip install --no-cache-dir soundfile librosa audioread decorator lazy-loader msgpack numba pooch soxr
+
+# Install Google API
+RUN pip install --no-cache-dir google-generativeai google-api-core google-auth
+
+# Install web framework
+RUN pip install --no-cache-dir fastapi==0.115.0 uvicorn==0.32.0 starlette python-multipart pydantic typing-extensions
+
+# Copy application
+COPY app.py .
+COPY utils/ ./utils/
+COPY static/ ./static/
+
+# Create data directory
+RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
-
-# Run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run app
+CMD ["python", "app.py"]
