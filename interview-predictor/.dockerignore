@@ -1,12 +1,34 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+# Virtual environments
 venv/
+venv.old*/
 env/
-ENV/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Backups
+backups/
+*.backup
+*.bak
+*.old
+
+# Logs
+*.log
+logs/
+
+# Git
+.git/
+.gitignore
 
 # IDE
 .vscode/
@@ -14,23 +36,26 @@ ENV/
 *.swp
 *.swo
 
-# Git
-.git/
-.gitignore
+# OS
+.DS_Store
+Thumbs.db
 
-# Data
-data/uploads/*
-data/raw/*
-*.mp3
-*.wav
-*.mp4
-
-# Logs
-*.log
-
-# Models cache
-models/cache/*
-
-# Temp files
-/tmp/
+# Temporary files
 *.tmp
+tmp/
+
+# Documentation
+*.md
+docs/
+
+# Screenshots
+screenshots/
+*.png
+*.jpg
+*.jpeg
+
+# Models (will be downloaded at runtime)
+models/cache/
+
+# Test data
+data/sample/

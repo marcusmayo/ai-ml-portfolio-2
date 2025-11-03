@@ -478,100 +478,29 @@
         </div>
         
         <div id="audio-tab" class="tab-content active">
-            <div class="model-guide">
-                <h4>Model Selection Guide:</h4>
-                <div id="model-guide-content">Loading model information...</div>
-            </div>
-            
-            <div class="upload-area" onclick="document.getElementById('audioFile').click()">
-                <div>Click to upload audio file</div>
-                <div class="file-info">Supported formats: MP3, WAV, M4A, OGG (Max 200MB)</div>
-            </div>
-            <input type="file" id="audioFile" accept=".mp3,.wav,.m4a,.ogg" style="display: none;">
-            <div class="file-info" id="fileInfo"></div>
-            
-            <div class="model-select">
-                <label>Select Whisper Model:</label>
-                <select id="modelSelect">
-                    <option value="tiny">Tiny - Fastest (5 min for 80MB)</option>
-                    <option value="base" selected>Base (Recommended) - 5-8 min for 30min audio</option>
-                    <option value="small">Small (High Accuracy) - 10-15 min for 30min audio</option>
-                    <option value="medium">Medium (Maximum Accuracy) - 20-30 min for 30min audio</option>
-                </select>
-            </div>
-            
-            <button class="analyze-btn" id="analyzeAudioBtn" onclick="analyzeAudio()" disabled>
-                Analyze Interview
-            </button>
-            
-            <div class="progress-container" id="progressContainer" style="display:none;">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill">0%</div>
+                            <div class="model-guide">
+                    <h4>Model Selection Guide:</h4>
+                    <div class="model-option">
+                        <strong>Tiny - Fastest</strong><br>
+                        39M params | ⭐⭐⭐ Good | 3-5 min (30min) | 8-12 min (60min)<br>
+                        <em>Best for: Quick demos, testing</em>
+                    </div>
+                    <div class="model-option">
+                        <strong>Base - Balanced (Recommended)</strong><br>
+                        74M params | ⭐⭐⭐⭐ Very Good | 5-8 min (30min) | 15-20 min (60min)<br>
+                        <em>Best for: Balanced accuracy/speed</em>
+                    </div>
+                    <div class="model-option">
+                        <strong>Small - Higher Accuracy</strong><br>
+                        244M params | ⭐⭐⭐⭐⭐ Excellent | 10-15 min (30min) | 30-40 min (60min)<br>
+                        <em>Best for: Higher accuracy needed</em>
+                    </div>
+                    <div class="model-option">
+                        <strong>Medium - Maximum Accuracy</strong><br>
+                        769M params | ⭐⭐⭐⭐⭐ Excellent | 20-30 min (30min) | 50-70 min (60min)<br>
+                        <em>Best for: Maximum accuracy</em>
+                    </div>
                 </div>
-                <p class="progress-message" id="progressMessage">Initializing...</p>
-            </div>
-        </div>
-        
-        <div id="transcript-tab" class="tab-content">
-            <textarea id="transcriptText" placeholder="Paste your interview transcript here..."></textarea>
-            <button class="analyze-btn" id="analyzeTextBtn" onclick="analyzeText()" style="margin-top: 20px;">
-                Analyze Transcript
-            </button>
-            
-            <div class="spinner-container" id="spinnerContainer">
-                <div class="spinner"></div>
-                <p class="spinner-message">Analyzing transcript...</p>
-            </div>
-        </div>
-        
-        <div class="results" id="results"></div>
-        
-        <div class="timeline-section" id="timelineSection">
-            <div class="timeline-title">Performance Timeline</div>
-
-        <!-- Inline Transcript Display -->
-        <div class="transcript-display" id="transcriptDisplay">
-            <div class="transcript-header">
-                <div class="transcript-time" id="transcriptTime">Select a timeline segment</div>
-                <div class="transcript-score" id="transcriptScore"></div>
-            </div>
-            <div class="transcript-text" id="transcriptBody">
-                Click any colored bar above to view the transcript for that time period.
-            </div>
-            <div class="transcript-meta" id="transcriptMeta"></div>
-        </div>
-
-            <div class="timeline-legend">
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #28a745;"></div>
-                    <span>Strong</span>
-                </div>
-
-
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #ffc107;"></div>
-                    <span>Okay</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #dc3545;"></div>
-                    <span>Weak</span>
-                </div>
-            </div>
-            <div class="timeline-container" id="timelineContainer"></div>
-        </div>
-        
-        <div class="feedback-section" id="feedbackSection">
-            <div class="feedback-title">AI Feedback & Tips</div>
-            <button class="feedback-btn" id="generateFeedbackBtn" onclick="generateFeedback()" disabled>
-                Generate AI Feedback
-            </button>
-            <div class="feedback-loading" id="feedbackLoading">
-                <div class="spinner"></div>
-                <p>Generating personalized feedback...</p>
-            </div>
-            <div class="feedback-content" id="feedbackContent"></div>
-        </div>
-    </div>
     
     <script>
         let selectedFile = null;
@@ -1057,5 +986,56 @@
 })();
 
     </script>
+<!-- ===== Upload timeout shim: extend /api/analyze-audio to 10 minutes and retry once ===== -->
+<script>
+(() => {
+  const ORIGINAL_FETCH = window.fetch.bind(window);
+  const UPLOAD_PATH = "/api/analyze-audio";
+  const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
+  const RETRY_DELAY_MS = 3000;
+
+  async function fetchWithExtendedTimeout(resource, options = {}) {
+    try {
+      const url = typeof resource === "string" ? resource : resource.url;
+      const isAnalyzeUpload = url.includes(UPLOAD_PATH) && (options?.method || "GET").toUpperCase() === "POST";
+
+      if (!isAnalyzeUpload) {
+        return await ORIGINAL_FETCH(resource, options);
+      }
+
+      const controller = new AbortController();
+      const signal = controller.signal;
+      const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
+      try {
+        const res = await ORIGINAL_FETCH(resource, { ...options, signal });
+        clearTimeout(timer);
+        return res;
+      } catch (err) {
+        clearTimeout(timer);
+        if (err && (err.name === "TypeError" || err.name === "NetworkError")) {
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+          const retryController = new AbortController();
+          const retryTimer = setTimeout(() => retryController.abort(), UPLOAD_TIMEOUT_MS);
+          try {
+            const res2 = await ORIGINAL_FETCH(resource, { ...options, signal: retryController.signal });
+            clearTimeout(retryTimer);
+            return res2;
+          } catch (err2) {
+            clearTimeout(retryTimer);
+            throw err2;
+          }
+        }
+        throw err;
+      }
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  window.fetch = fetchWithExtendedTimeout;
+})();
+</script>
+<!-- ===== End upload timeout shim ===== -->
 </body>
 </html>

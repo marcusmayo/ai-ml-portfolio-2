@@ -36,23 +36,18 @@ class TimelineAnalyzer:
         Heavy classifiers (zero-shot competency) are skipped per segment.
         """
         if not segments:
-            print("WARNING: No segments provided to analyze_segments")
             return []
-        
-        print(f"Timeline: analyzing {len(segments)} segments...")
         
         # Load NLP models once
         self.nlp.load_models()
         
         # downsample aggressively on long calls
-        sampled = self._sample_segments(segments)
-        print(f"Timeline: downsampled to {len(sampled)} segments")
+        segments = self._sample_segments(segments)
         
         scored_segments = []
-        for i, segment in enumerate(sampled, 1):
+        for i, segment in enumerate(segments, 1):
             txt = (segment.get('text') or '').strip()
             if len(txt) < 10:
-                print(f"Skipping segment {i}: too short")
                 continue  # skip trivial fillers
             
             # Fast features only
@@ -83,33 +78,15 @@ class TimelineAnalyzer:
                 'toxicity': toxicity,
                 'prediction': results['prediction']
             })
-            
-            if i <= 3 or i % 20 == 0:
-                print(f"  Segment {i}/{len(sampled)}: score={results['score']:.1f}%")
         
-        print(f"Timeline: scored {len(scored_segments)} segments")
         return scored_segments
     
     def create_timeline_data(self, scored_segments: List[Dict], duration: float) -> Dict:
         """
         Create timeline visualization data from scored segments.
         Bin size adapts to keep ~100 bins on very long calls.
-        
-        Args:
-            scored_segments: List of segments with 'start', 'end', 'score'
-            duration: Total duration in seconds
-            
-        Returns:
-            Dict with 'bins', 'duration', 'bin_size'
         """
-        print(f"Timeline: create_timeline_data called with {len(scored_segments)} segments, duration={duration}s")
-        
-        if not scored_segments:
-            print("WARNING: No scored segments provided to create_timeline_data")
-            return {'bins': [], 'duration': 0, 'bin_size': 0}
-        
-        if duration <= 0:
-            print(f"WARNING: Invalid duration: {duration}")
+        if not scored_segments or duration <= 0:
             return {'bins': [], 'duration': 0, 'bin_size': 0}
         
         # target around ~100 bins; min 20s, max 120s
@@ -117,18 +94,15 @@ class TimelineAnalyzer:
         bin_size = max(20, min(120, int(max(1, duration // target_bins))))
         
         num_bins = int(duration / bin_size) + 1
-        print(f"Timeline: Creating {num_bins} bins of {bin_size}s each")
-        
         bins = []
         
         for i in range(num_bins):
             bin_start = i * bin_size
             bin_end = min((i + 1) * bin_size, duration)
             
-            # Find segments that overlap this bin
             bin_segments = [
                 seg for seg in scored_segments
-                if seg['end'] > bin_start and seg['start'] < bin_end
+                if seg['start'] >= bin_start and seg['start'] < bin_end
             ]
             
             if bin_segments:
@@ -141,10 +115,8 @@ class TimelineAnalyzer:
                     color, label = 'red', 'Weak'
                 
                 bins.append({
-                    't0': round(bin_start, 1),      # for frontend compatibility
-                    't1': round(bin_end, 1),         # for frontend compatibility
-                    'start': round(bin_start, 1),    # legacy field
-                    'end': round(bin_end, 1),        # legacy field
+                    'start': bin_start,
+                    'end': bin_end,
                     'score': round(avg_score, 1),
                     'color': color,
                     'label': label,
@@ -152,55 +124,16 @@ class TimelineAnalyzer:
                     'segments': [
                         {
                             'text': seg['text'][:100] + '...' if len(seg['text']) > 100 else seg['text'],
-                            'score': round(seg['score'], 1),
-                            'start': round(seg['start'], 1),
-                            'end': round(seg['end'], 1)
+                            'score': seg['score'],
+                            'start': seg['start'],
+                            'end': seg['end']
                         }
                         for seg in bin_segments
                     ]
                 })
-            else:
-                # Empty bin - use neutral score
-                bins.append({
-                    't0': round(bin_start, 1),
-                    't1': round(bin_end, 1),
-                    'start': round(bin_start, 1),
-                    'end': round(bin_end, 1),
-                    'score': 50.0,
-                    'color': 'yellow',
-                    'label': 'No data',
-                    'segment_count': 0,
-                    'segments': []
-                })
         
-        result = {
+        return {
             'bins': bins,
-            'duration': round(duration, 1),
+            'duration': duration,
             'bin_size': bin_size
         }
-        
-        print(f"Timeline: Created {len(bins)} bins successfully")
-        if bins:
-            print(f"  First bin: {bins[0]['t0']}-{bins[0]['t1']}s, score={bins[0]['score']}% ({bins[0]['label']})")
-            print(f"  Last bin: {bins[-1]['t0']}-{bins[-1]['t1']}s, score={bins[-1]['score']}% ({bins[-1]['label']})")
-        
-        return result
-
-# Debug helper (add to end of file)
-if __name__ == "__main__":
-    # Quick test
-    test_segments = [
-        {"start": 0.0, "end": 5.0, "text": "Hello this is a test"},
-        {"start": 5.0, "end": 10.0, "text": "Another segment here"},
-        {"start": 10.0, "end": 15.0, "text": "Final test segment"}
-    ]
-    
-    print("Testing TimelineAnalyzer...")
-    analyzer = TimelineAnalyzer()
-    scored = analyzer.analyze_segments(test_segments)
-    print(f"Scored {len(scored)} segments")
-    
-    timeline = analyzer.create_timeline_data(scored, 15.0)
-    print(f"Timeline has {len(timeline['bins'])} bins")
-    print(f"Duration: {timeline['duration']}")
-    print(f"Bin size: {timeline['bin_size']}")

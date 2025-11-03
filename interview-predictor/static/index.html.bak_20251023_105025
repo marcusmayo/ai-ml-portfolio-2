@@ -388,84 +388,7 @@
         .feedback-content li {
             margin: 8px 0;
         }
-.transcript-display { display: none !important; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #667eea; }
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.transcript-display.show { display: block !important; visibility: visible !important; opacity: 1 !important; }
-
-.transcript-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.transcript-time {
-    font-weight: 600;
-    font-size: 18px;
-    color: #333;
-}
-
-.transcript-score {
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-weight: 600;
-    color: white;
-}
-
-.transcript-score.green { background: #28a745; }
-.transcript-score.yellow { background: #ffc107; color: #333; }
-.transcript-score.red { background: #dc3545; }
-
-.transcript-text {
-    min-height: 60px;
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    line-height: 1.8;
-    font-size: 15px;
-    color: #333;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.transcript-meta {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #666;
-    font-style: italic;
-}
-</style>
     </style>
-<style>
-/* Force transcript child visibility */
-.transcript-display.show * {
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.transcript-display.show .transcript-time,
-.transcript-display.show .transcript-score,
-.transcript-display.show .transcript-text,
-.transcript-display.show .transcript-meta {
-    display: block !important;
-}
-
-.transcript-display.show .transcript-header {
-    display: flex !important;
-}
-
-/* Ensure min height so empty text still shows something */
-.transcript-text {
-    min-height: 80px !important;
-}
-</style>
 </head>
 <body>
     <div class="container">
@@ -528,26 +451,11 @@
         
         <div class="timeline-section" id="timelineSection">
             <div class="timeline-title">Performance Timeline</div>
-
-        <!-- Inline Transcript Display -->
-        <div class="transcript-display" id="transcriptDisplay">
-            <div class="transcript-header">
-                <div class="transcript-time" id="transcriptTime">Select a timeline segment</div>
-                <div class="transcript-score" id="transcriptScore"></div>
-            </div>
-            <div class="transcript-text" id="transcriptBody">
-                Click any colored bar above to view the transcript for that time period.
-            </div>
-            <div class="transcript-meta" id="transcriptMeta"></div>
-        </div>
-
             <div class="timeline-legend">
                 <div class="legend-item">
                     <div class="legend-color" style="background: #28a745;"></div>
                     <span>Strong</span>
                 </div>
-
-
                 <div class="legend-item">
                     <div class="legend-color" style="background: #ffc107;"></div>
                     <span>Okay</span>
@@ -739,7 +647,7 @@
         }
         
         function analyzeText() {
-            const text = document.getElementById('transcriptBody').value.trim();
+            const text = document.getElementById('transcriptText').value.trim();
             if (!text) {
                 alert('Please enter a transcript');
                 return;
@@ -890,172 +798,6 @@
             document.getElementById("feedbackContent").innerHTML = formattedFeedback;
             document.getElementById("feedbackContent").style.display = "block";
         }
-
-// === SPARKLINE CLICK HANDLER FOR TRANSCRIPT POPUPS ===
-(function() {
-  console.log('🔧 Installing sparkline click handlers...');
-  
-  // Store analysis data globally when results display
-  window._lastAnalysisData = null;
-  
-  // Override displayResults to capture data
-  const originalDisplayResults = window.displayResults;
-  if (originalDisplayResults) {
-    window.displayResults = function(data) {
-      window._lastAnalysisData = data;
-      console.log('📦 Stored analysis data:', {
-        hasTimeline: !!data.timeline,
-        hasSegments: !!data.segments,
-        bins: data.timeline?.bins?.length || 0
-      });
-      return originalDisplayResults.call(this, data);
-    };
-  }
-  
-  // Function to show transcript popup for a timeline bin
-  
-  // Attach click handlers to timeline bars
-  // Function to show transcript INLINE below timeline (no pop-up)
-    window.showTranscriptInline = function(bin, segments) {
-    console.log('🔧 showTranscriptInline called', { bin, segmentCount: segments?.length });
-    
-    if (!segments || segments.length === 0) {
-      console.warn('⚠️ No segments available');
-      return;
-    }
-    
-    const binStart = parseFloat(bin.start || 0);
-    const binEnd = parseFloat(bin.end || binStart);
-    const score = Math.round(bin.score || 0);
-    
-    console.log(`📊 Bin: ${binStart}s - ${binEnd}s, Score: ${score}%`);
-    
-    // Find matching segments
-    const matchingSegments = segments.filter(seg => {
-      const segStart = parseFloat(seg.start || 0);
-      const segEnd = parseFloat(seg.end || segStart);
-      return segEnd > binStart && segStart < binEnd;
-    });
-    
-    console.log(`✅ Found ${matchingSegments.length} matching segments`);
-    
-    const transcriptText = matchingSegments
-      .map(seg => (seg.text || '').trim())
-      .filter(t => t.length > 0)
-      .join(' ');
-    
-    console.log(`📝 Transcript length: ${transcriptText.length} chars`);
-    
-    // Determine color
-    let scoreColor = 'red';
-    if (score >= 70) scoreColor = 'green';
-    else if (score >= 40) scoreColor = 'yellow';
-    
-    // Get elements - with error checking
-    const displayDiv = document.getElementById('transcriptDisplay');
-    const timeDiv = document.getElementById('transcriptTime');
-    const scoreDiv = document.getElementById('transcriptScore');
-    const textDiv = document.getElementById('transcriptBody');
-    const metaDiv = document.getElementById('transcriptMeta');
-    
-    if (!displayDiv) {
-      console.error('❌ transcriptDisplay not found');
-      return;
-    }
-    if (!timeDiv || !scoreDiv || !textDiv || !metaDiv) {
-      console.error('❌ Child elements not found', { timeDiv, scoreDiv, textDiv, metaDiv });
-      return;
-    }
-    
-    console.log('✅ All elements found');
-    
-    // Force update content with innerHTML to ensure it works
-    const timeText = `Timeline: ${binStart.toFixed(1)}s – ${binEnd.toFixed(1)}s`;
-    const scoreText = `${score}%`;
-    const metaText = `${matchingSegments.length} segment${matchingSegments.length !== 1 ? 's' : ''} • Duration: ${(binEnd - binStart).toFixed(1)}s`;
-    const displayText = transcriptText && transcriptText.length > 5
-      ? transcriptText
-      : `<em style="color:#999">No transcript text available for this ${(binEnd - binStart).toFixed(1)}s segment.<br><br>This may be because:<br>• The segment is too short<br>• No speech was detected<br>• Audio quality issues</em>`;
-    
-    // Use innerHTML for guaranteed update
-    timeDiv.innerHTML = timeText;
-    scoreDiv.innerHTML = scoreText;
-    scoreDiv.className = `transcript-score ${scoreColor}`;
-    textDiv.innerHTML = displayText;
-    metaDiv.innerHTML = metaText;
-    
-    console.log('✅ Content updated:', { timeText, scoreText, textLength: displayText.length });
-    
-    // Force show
-    displayDiv.classList.add('show');
-    // FORCE VISIBILITY WITH INLINE STYLES - CANNOT BE HIDDEN
-    displayDiv.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; height: auto !important; min-height: 150px !important; background: #f8f9fa !important; padding: 20px !important; margin: 20px 0 !important; border-left: 4px solid #667eea !important; border-radius: 10px !important; z-index: 100 !important;';
-    
-    timeDiv.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; font-size: 18px !important; font-weight: 600 !important; color: #333 !important; margin-bottom: 10px !important;';
-    
-    scoreDiv.style.cssText = 'display: inline-block !important; visibility: visible !important; opacity: 1 !important; padding: 8px 16px !important; border-radius: 6px !important; font-weight: 700 !important; color: white !important;';
-    
-    textDiv.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background: white !important; padding: 16px !important; border-radius: 8px !important; min-height: 80px !important; font-size: 15px !important; color: #333 !important; line-height: 1.8 !important; margin: 15px 0 !important;';
-    
-    metaDiv.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; font-size: 13px !important; color: #666 !important; margin-top: 10px !important;';
-    displayDiv.style.display = 'block';
-    
-    console.log('✅ Display shown, classList:', displayDiv.classList.toString());
-    
-    // Scroll to view
-    setTimeout(() => {
-      displayDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 100);
-  };
-
-  window.attachTimelineClickHandlers = function() {
-    const bars = document.querySelectorAll('#timelineContainer > .timeline-segment');
-    console.log('🔗 Found', bars.length, 'timeline bars');
-    
-    if (!window._lastAnalysisData) {
-      console.warn('⚠️ No analysis data stored yet. Upload audio first.');
-      return;
-    }
-    
-    const bins = window._lastAnalysisData.timeline?.bins || [];
-    const segments = window._lastAnalysisData.segments || [];
-    
-    if (bins.length === 0) {
-      console.warn('⚠️ No timeline bins available');
-      return;
-    }
-    
-    bars.forEach((bar, idx) => {
-      if (bins[idx]) {
-        bar.style.cursor = 'pointer';
-        bar.onclick = function(e) {
-          e.stopPropagation();
-          console.log('🖱️ Bar', idx, 'clicked');
-          showTranscriptInline(bins[idx], segments);
-        };
-      }
-    });
-    
-    console.log('✅ Click handlers attached to', bars.length, 'bars');
-  };
-  
-  // Also override displayTimeline to auto-attach handlers
-  const originalDisplayTimeline = window.displayTimeline;
-  if (originalDisplayTimeline) {
-    window.displayTimeline = function(timeline) {
-      const result = originalDisplayTimeline.call(this, timeline);
-      // Attach handlers after a short delay to ensure DOM is ready
-      setTimeout(() => {
-        window.attachTimelineClickHandlers();
-      }, 100);
-      return result;
-    };
-  }
-  
-  console.log('✅ Sparkline click handler installed!');
-  console.log('💡 Timeline bars are now clickable - upload audio to test');
-})();
-
     </script>
 </body>
 </html>

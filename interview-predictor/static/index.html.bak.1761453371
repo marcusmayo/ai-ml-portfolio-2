@@ -1057,5 +1057,56 @@
 })();
 
     </script>
+<!-- ===== Upload timeout shim: extend /api/analyze-audio to 10 minutes and retry once ===== -->
+<script>
+(() => {
+  const ORIGINAL_FETCH = window.fetch.bind(window);
+  const UPLOAD_PATH = "/api/analyze-audio";
+  const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
+  const RETRY_DELAY_MS = 3000;
+
+  async function fetchWithExtendedTimeout(resource, options = {}) {
+    try {
+      const url = typeof resource === "string" ? resource : resource.url;
+      const isAnalyzeUpload = url.includes(UPLOAD_PATH) && (options?.method || "GET").toUpperCase() === "POST";
+
+      if (!isAnalyzeUpload) {
+        return await ORIGINAL_FETCH(resource, options);
+      }
+
+      const controller = new AbortController();
+      const signal = controller.signal;
+      const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
+      try {
+        const res = await ORIGINAL_FETCH(resource, { ...options, signal });
+        clearTimeout(timer);
+        return res;
+      } catch (err) {
+        clearTimeout(timer);
+        if (err && (err.name === "TypeError" || err.name === "NetworkError")) {
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+          const retryController = new AbortController();
+          const retryTimer = setTimeout(() => retryController.abort(), UPLOAD_TIMEOUT_MS);
+          try {
+            const res2 = await ORIGINAL_FETCH(resource, { ...options, signal: retryController.signal });
+            clearTimeout(retryTimer);
+            return res2;
+          } catch (err2) {
+            clearTimeout(retryTimer);
+            throw err2;
+          }
+        }
+        throw err;
+      }
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  window.fetch = fetchWithExtendedTimeout;
+})();
+</script>
+<!-- ===== End upload timeout shim ===== -->
 </body>
 </html>

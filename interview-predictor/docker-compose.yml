@@ -2,21 +2,13 @@ version: '3.8'
 
 services:
   interview-predictor:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
+    container_name: interview-predictor
     ports:
       - "8080:8080"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./uploads:/app/uploads
-      - ./models:/app/models
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - ./data:/app/data
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
